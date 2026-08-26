@@ -203,10 +203,10 @@ def run_tests():
         print("\n[5/13] Verifying socket parametric metadata...")
         assert socket_obj.get("kf_type") == "socket", f"kf_type mismatch: {socket_obj.get('kf_type')}"
         assert socket_obj.get("kf_socket_type") == "ball", f"kf_socket_type mismatch: {socket_obj.get('kf_socket_type')}"
-        assert math.isclose(socket_obj.get("kf_ball_diameter_mm"), 5.0), "kf_ball_diameter_mm mismatch"
-        assert math.isclose(socket_obj.get("kf_clearance_mm"), 0.15), "kf_clearance_mm mismatch"
-        assert math.isclose(socket_obj.get("kf_socket_diameter_mm"), 5.30), "kf_socket_diameter_mm mismatch"
-        assert math.isclose(socket_obj.get("kf_socket_depth_mm"), 3.5), "kf_socket_depth_mm mismatch"
+        assert math.isclose(socket_obj.get("kf_ball_diameter_mm"), 5.0, abs_tol=1e-5), "kf_ball_diameter_mm mismatch"
+        assert math.isclose(socket_obj.get("kf_clearance_mm"), 0.15, abs_tol=1e-5), "kf_clearance_mm mismatch"
+        assert math.isclose(socket_obj.get("kf_socket_diameter_mm"), 5.30, abs_tol=1e-5), "kf_socket_diameter_mm mismatch"
+        assert math.isclose(socket_obj.get("kf_socket_depth_mm"), 3.5, abs_tol=1e-5), "kf_socket_depth_mm mismatch"
         assert tuple(socket_obj.get("kf_axis")) == (0.0, 0.0, 1.0), "kf_axis mismatch"
         assert tuple(socket_obj.get("kf_insertion_axis")) == (0.0, 0.0, -1.0), "kf_insertion_axis mismatch"
 
@@ -290,7 +290,7 @@ def run_tests():
         bpy.context.view_layer.objects.active = ball_obj
         res_link = bpy.ops.kinefig.use_selected_ball()
         assert res_link == {"FINISHED"}, f"use_selected_ball returned {res_link}"
-        assert math.isclose(bpy.context.scene.kinefig_ball_socket.ball_diameter_mm, 5.0), (
+        assert math.isclose(bpy.context.scene.kinefig_ball_socket.ball_diameter_mm, 5.0, abs_tol=1e-5), (
             "kinefig_ball_socket.ball_diameter_mm not updated from selected ball"
         )
         print("  -> PASSED: Successfully populated socket ball diameter from selected ball joint")

@@ -219,10 +219,10 @@ def create_ball_socket_geometry(
         socket_obj["kf_type"] = "socket"
         socket_obj["kf_socket_type"] = "ball"
         socket_obj["kf_version"] = VERSION
-        socket_obj["kf_ball_diameter_mm"] = float(ball_diameter_mm)
-        socket_obj["kf_clearance_mm"] = float(clearance_mm)
-        socket_obj["kf_socket_diameter_mm"] = float(socket_diameter_mm)
-        socket_obj["kf_socket_depth_mm"] = float(socket_depth_mm)
+        socket_obj["kf_ball_diameter_mm"] = round(float(ball_diameter_mm), 4)
+        socket_obj["kf_clearance_mm"] = round(float(clearance_mm), 4)
+        socket_obj["kf_socket_diameter_mm"] = round(float(socket_diameter_mm), 4)
+        socket_obj["kf_socket_depth_mm"] = round(float(socket_depth_mm), 4)
         socket_obj["kf_axis"] = (0.0, 0.0, 1.0)
         socket_obj["kf_insertion_axis"] = (0.0, 0.0, -1.0)
 
