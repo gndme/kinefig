@@ -166,7 +166,7 @@ def run_tests():
         assert math.isclose(ball_obj.get("kf_ball_diameter_mm"), 5.0), "kf_ball_diameter_mm mismatch"
         assert math.isclose(ball_obj.get("kf_stem_diameter_mm"), 3.0), "kf_stem_diameter_mm mismatch"
         assert math.isclose(ball_obj.get("kf_stem_length_mm"), 5.0), "kf_stem_length_mm mismatch"
-        assert ball_obj.get("kf_axis") == (0.0, 0.0, 1.0), "kf_axis mismatch"
+        assert tuple(ball_obj.get("kf_axis")) == (0.0, 0.0, 1.0), f"kf_axis mismatch: {ball_obj.get('kf_axis')}"
         print("  -> PASSED: Metadata matches contract exactly")
 
         # 5. Verify Geometry Dimensions & Location
