@@ -1,14 +1,14 @@
 """KineFig core module."""
 
 from .units import MM_TO_M, mm_to_blender, blender_to_mm
-from .errors import KineFigError, KineFigValidationError
+from .errors import KineFigError, KineFigValidationError, KineFigGeometryError
 from .validation import (
     require_positive,
     require_non_negative,
     require_in_range,
+    require_integer_in_range,
     validate_ball_joint_parameters,
 )
-
 from .naming import (
     PREFIX_KINEFIG,
     PREFIX_TEMP,
@@ -50,11 +50,12 @@ __all__ = [
     "blender_to_mm",
     "KineFigError",
     "KineFigValidationError",
+    "KineFigGeometryError",
     "require_positive",
     "require_non_negative",
     "require_in_range",
+    "require_integer_in_range",
     "validate_ball_joint_parameters",
-
     "PREFIX_KINEFIG",
     "PREFIX_TEMP",
     "format_object_name",

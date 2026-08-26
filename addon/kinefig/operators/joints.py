@@ -2,8 +2,9 @@
 
 import bpy
 from ..geometry.joints import create_ball_joint_geometry
-from ..core.errors import KineFigValidationError
+from ..core.errors import KineFigValidationError, KineFigGeometryError
 from ..core.logging import log_error
+
 
 
 class KINEFIG_OT_create_ball_joint(bpy.types.Operator):
@@ -95,10 +96,15 @@ class KINEFIG_OT_create_ball_joint(bpy.types.Operator):
             self.report({"INFO"}, f"Created ball joint: {obj.name}")
             return {"FINISHED"}
         except KineFigValidationError as exc:
-            self.report({"ERROR"}, str(exc))
+            self.report({"ERROR"}, f"Validation error: {exc}")
             log_error(f"Validation failed: {exc}")
+            return {"CANCELLED"}
+        except KineFigGeometryError as exc:
+            self.report({"ERROR"}, f"Geometry error: {exc}")
+            log_error(f"Geometry operation failed: {exc}")
             return {"CANCELLED"}
         except Exception as exc:
             self.report({"ERROR"}, f"Failed to create ball joint: {exc}")
-            log_error(f"Failed to create ball joint", exc=exc)
+            log_error("Failed to create ball joint", exc=exc)
             return {"CANCELLED"}
+

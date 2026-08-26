@@ -11,13 +11,15 @@ Validates for PR-001 & PR-002:
 4. Scene safety: preserves unrelated scene objects and scene unit settings.
 5. Operator execution: bpy.ops.kinefig.create_ball_joint (5mm ball, 3mm stem, 5mm length).
 6. Naming: creates KF_Joint_Ball_001, repeated execution creates KF_Joint_Ball_002 without collision.
-7. Metadata: validates kf_type, kf_joint_type, dimensions, axis, side.
+7. Metadata: validates factual metadata (kf_type, kf_joint_type, dimensions, axis)
+   and verifies uncomputed keys (kf_range_min, kf_clearance_mm, kf_role, kf_side) are ABSENT.
 8. Geometry dimensions: exact 5.0mm diameter and 7.5mm total height within tolerance.
 9. Geometry quality & Manifoldness: asserts 100% 2-manifold edges, 0 boundary edges, positive volume.
 10. Transforms: object location matches 3D cursor.
-11. Undo execution in background mode.
-12. Zero temporary helper objects remain.
-13. Clean unregister.
+11. Transactional rollback: injected Boolean failure leaves 0 orphan objects/meshes and preserves scene.
+12. Zero temporary helper objects (_KF_TMP_) remain in objects or mesh datablocks.
+13. Undo execution in background mode.
+14. Clean unregister.
 """
 
 import sys
@@ -90,7 +92,9 @@ def run_tests():
         # Import packaged extension directly
         import kinefig
         from kinefig.core.build_info import get_version_string, get_short_sha
-        from kinefig.core.diagnostics import collect_diagnostic_report
+        from kinefig.core.naming import PREFIX_TEMP, is_temp_object
+        from kinefig.core.errors import KineFigGeometryError
+        from kinefig.geometry.joints import create_ball_joint_geometry
 
         print(f"Imported package from: {kinefig.__file__}")
         assert str(addon_pkg_dir) in str(Path(kinefig.__file__).resolve()), (
@@ -99,7 +103,7 @@ def run_tests():
         print(f"Build Info in Zip: {get_version_string()}")
 
         # 1. Test clean registration and unregistration
-        print("\n[1/9] Testing register() & unregister() cycle...")
+        print("\n[1/10] Testing register() & unregister() cycle...")
         kinefig.register()
         assert hasattr(bpy.types, "KINEFIG_OT_create_ball_joint"), (
             "KINEFIG_OT_create_ball_joint missing from bpy.types after register()"
@@ -127,7 +131,7 @@ def run_tests():
         print("  -> PASSED: Packaged zip register/unregister cycle clean")
 
         # 2. Scene Safety Setup: unrelated object & scene unit baseline
-        print("\n[2/9] Testing scene safety & preservation baseline...")
+        print("\n[2/10] Testing scene safety & preservation baseline...")
         if bpy.context.mode != "OBJECT":
             bpy.ops.object.mode_set(mode="OBJECT")
 
@@ -145,7 +149,7 @@ def run_tests():
         print("  -> PASSED: Created unrelated scene object and recorded baseline state")
 
         # 3. Create Parametric Ball Joint (PR-002 Core)
-        print("\n[3/9] Testing bpy.ops.kinefig.create_ball_joint execution...")
+        print("\n[3/10] Testing bpy.ops.kinefig.create_ball_joint execution...")
         res = bpy.ops.kinefig.create_ball_joint(
             ball_diameter_mm=5.0,
             stem_diameter_mm=3.0,
@@ -159,18 +163,22 @@ def run_tests():
         assert ball_obj is not None, "KF_Joint_Ball_001 not found in bpy.data.objects"
         print(f"  -> PASSED: Created {ball_obj.name}")
 
-        # 4. Verify Metadata
-        print("\n[4/9] Verifying KineFig parametric metadata...")
+        # 4. Verify Factual Metadata & Absence of Unknowns (FINDING MEDIUM-03)
+        print("\n[4/10] Verifying KineFig parametric metadata...")
         assert ball_obj.get("kf_type") == "joint", f"kf_type mismatch: {ball_obj.get('kf_type')}"
         assert ball_obj.get("kf_joint_type") == "ball", f"kf_joint_type mismatch: {ball_obj.get('kf_joint_type')}"
         assert math.isclose(ball_obj.get("kf_ball_diameter_mm"), 5.0), "kf_ball_diameter_mm mismatch"
         assert math.isclose(ball_obj.get("kf_stem_diameter_mm"), 3.0), "kf_stem_diameter_mm mismatch"
         assert math.isclose(ball_obj.get("kf_stem_length_mm"), 5.0), "kf_stem_length_mm mismatch"
         assert tuple(ball_obj.get("kf_axis")) == (0.0, 0.0, 1.0), f"kf_axis mismatch: {ball_obj.get('kf_axis')}"
-        print("  -> PASSED: Metadata matches contract exactly")
+
+        # Uncomputed/unknown metadata keys must NOT be present
+        for uncomputed_key in ("kf_range_min", "kf_range_max", "kf_clearance_mm", "kf_role", "kf_side"):
+            assert uncomputed_key not in ball_obj, f"Uncomputed metadata key '{uncomputed_key}' should be absent"
+        print("  -> PASSED: Factual metadata verified; uncomputed keys are strictly absent")
 
         # 5. Verify Geometry Dimensions & Location
-        print("\n[5/9] Verifying dimensions and 3D cursor placement...")
+        print("\n[5/10] Verifying dimensions and 3D cursor placement...")
         dim = ball_obj.dimensions
         tolerance = 2e-4  # 0.2 mm tolerance for discrete mesh facets
 
@@ -195,7 +203,7 @@ def run_tests():
         print(f"  -> Location: ({loc.x:.3f}, {loc.y:.3f}, {loc.z:.3f}) matches 3D Cursor")
 
         # 6. Geometry Quality Check: Manifoldness Assertion (bmesh)
-        print("\n[6/9] Asserting 100% Watertight 2-Manifold Quality...")
+        print("\n[6/10] Asserting 100% Watertight 2-Manifold Quality...")
         bm = bmesh.new()
         bm.from_mesh(ball_obj.data)
 
@@ -210,7 +218,7 @@ def run_tests():
         bm.free()
 
         # 7. Repeated Execution & Naming Collision Avoidance
-        print("\n[7/9] Testing repeated execution collision handling...")
+        print("\n[7/10] Testing repeated execution collision handling...")
         res2 = bpy.ops.kinefig.create_ball_joint(
             ball_diameter_mm=6.0,
             stem_diameter_mm=3.5,
@@ -222,19 +230,58 @@ def run_tests():
         assert ball_obj.name == "KF_Joint_Ball_001", "Existing object was overwritten or renamed"
         print("  -> PASSED: Sequential naming generated KF_Joint_Ball_002 cleanly")
 
-        # 8. Verify Scene Safety Preservation
-        print("\n[8/9] Verifying scene safety preservation...")
-        # Unrelated object untouched
+        # 8. Verify Scene Safety & Temp Cleanup on Success (FINDING MEDIUM-02)
+        print("\n[8/10] Verifying scene safety and temp datablock cleanup on success...")
         assert "User_Target_Mesh" in bpy.data.objects, "Unrelated object was removed or renamed"
-        # Scene unit scale untouched
         assert bpy.context.scene.unit_settings.scale_length == initial_unit_scale, "Scene unit settings altered"
-        # Zero temporary helper objects left in scene
-        temp_objs = [o.name for o in bpy.data.objects if o.name.startswith("KF_Temp_")]
-        assert len(temp_objs) == 0, f"Orphan temporary objects found: {temp_objs}"
-        print("  -> PASSED: Scene safety preserved 100%, zero orphan temporary objects")
 
-        # 9. Cleanup & Undo Verification
-        print("\n[9/9] Testing Undo and cleanup...")
+        # Check temporary objects using PREFIX_TEMP and is_temp_object
+        temp_objs = [o.name for o in bpy.data.objects if is_temp_object(o.name) or o.name.startswith(PREFIX_TEMP)]
+        assert len(temp_objs) == 0, f"Orphan temporary objects found: {temp_objs}"
+
+        # Check temporary mesh datablocks using PREFIX_TEMP and is_temp_object
+        temp_meshes = [m.name for m in bpy.data.meshes if is_temp_object(m.name) or m.name.startswith(PREFIX_TEMP)]
+        assert len(temp_meshes) == 0, f"Orphan temporary mesh datablocks found: {temp_meshes}"
+        print(f"  -> PASSED: Zero temporary objects or meshes ({PREFIX_TEMP} = 0)")
+
+        # 9. Test Transactional Rollback on Boolean Failure (FINDING HIGH-01)
+        print("\n[9/10] Testing transactional rollback on forced Boolean failure...")
+        baseline_objects = set(bpy.data.objects.keys())
+        baseline_meshes = set(bpy.data.meshes.keys())
+
+        failure_caught = False
+        try:
+            create_ball_joint_geometry(
+                context=bpy.context,
+                ball_diameter_mm=5.0,
+                stem_diameter_mm=3.0,
+                stem_length_mm=5.0,
+                _inject_boolean_failure=True,
+            )
+        except KineFigGeometryError:
+            failure_caught = True
+
+        assert failure_caught, "Expected KineFigGeometryError was not raised on failure!"
+
+        # Verify zero object or mesh leaks after rollback
+        current_objects = set(bpy.data.objects.keys())
+        current_meshes = set(bpy.data.meshes.keys())
+        assert current_objects == baseline_objects, f"Object leak during failure rollback: {current_objects - baseline_objects}"
+        assert current_meshes == baseline_meshes, f"Mesh datablock leak during failure rollback: {current_meshes - baseline_meshes}"
+
+        # Verify no temporary objects or meshes exist
+        post_fail_temp_objs = [o.name for o in bpy.data.objects if is_temp_object(o.name) or o.name.startswith(PREFIX_TEMP)]
+        assert len(post_fail_temp_objs) == 0, f"Orphan temp objects found after rollback: {post_fail_temp_objs}"
+
+        post_fail_temp_meshes = [m.name for m in bpy.data.meshes if is_temp_object(m.name) or m.name.startswith(PREFIX_TEMP)]
+        assert len(post_fail_temp_meshes) == 0, f"Orphan temp meshes found after rollback: {post_fail_temp_meshes}"
+
+        # Unrelated object remains intact
+        assert "User_Target_Mesh" in bpy.data.objects, "Unrelated user object was damaged during rollback"
+        print("  -> PASSED: Transactional rollback executed cleanly, zero leaks, scene preserved")
+
+        # 10. Cleanup & Undo Verification
+        print("\n[10/10] Testing Undo and cleanup...")
         try:
             if hasattr(bpy.ops.ed, "undo") and bpy.ops.ed.undo.poll():
                 bpy.ops.ed.undo()

@@ -6,6 +6,8 @@ from addon.kinefig.core.validation import (
     require_positive,
     require_non_negative,
     require_in_range,
+    require_integer_in_range,
+    validate_ball_joint_parameters,
 )
 from addon.kinefig.core.errors import KineFigValidationError
 
@@ -40,22 +42,22 @@ def test_require_non_negative_success():
 
 @pytest.mark.parametrize("invalid_val", [-0.0001, -1, -10.0])
 def test_require_non_negative_failure(invalid_val):
-    """Verify require_non_negative raises KineFigValidationError for negative numbers."""
+    """Verify require_non_negative raises KineFigValidationError for < 0."""
     with pytest.raises(KineFigValidationError, match="must be 0 or greater"):
-        require_non_negative(invalid_val, "clearance")
+        require_non_negative(invalid_val, "offset")
 
 
 @pytest.mark.parametrize("non_finite_val", [float("nan"), float("inf"), float("-inf")])
 def test_require_non_negative_non_finite(non_finite_val):
-    """Verify require_non_negative rejects NaN, +inf, -inf with KineFigValidationError."""
+    """Verify require_non_negative rejects non-finite numbers with KineFigValidationError."""
     with pytest.raises(KineFigValidationError, match="must be a finite number"):
-        require_non_negative(non_finite_val, "clearance")
+        require_non_negative(non_finite_val, "offset")
 
 
 def test_require_in_range_success():
-    """Verify require_in_range accepts values within [min, max]."""
-    assert require_in_range(0.5, 0.0, 1.0, "factor") == 0.5
+    """Verify require_in_range accepts numbers within [min_val, max_val] inclusive."""
     assert require_in_range(0.0, 0.0, 1.0, "factor") == 0.0
+    assert require_in_range(0.5, 0.0, 1.0, "factor") == 0.5
     assert require_in_range(1.0, 0.0, 1.0, "factor") == 1.0
 
 
@@ -86,11 +88,58 @@ def test_require_in_range_inverted_bounds():
         require_in_range(5.0, 10.0, 2.0, "factor")
 
 
+# ==============================================================================
+# Strict Integer In Range Tests (FINDING MEDIUM-01)
+# ==============================================================================
+
+def test_require_integer_in_range_success():
+    """Verify require_integer_in_range accepts valid boundary and intermediate ints."""
+    assert require_integer_in_range(3, 3, 256, "segments") == 3
+    assert require_integer_in_range(256, 3, 256, "segments") == 256
+    assert require_integer_in_range(32, 3, 256, "segments") == 32
+    assert require_integer_in_range(16, 3, 256, "rings") == 16
+
+
+@pytest.mark.parametrize(
+    "invalid_input",
+    [
+        2,              # 2 FAIL (below min)
+        257,            # 257 FAIL (above max)
+        3.5,            # 3.5 FAIL (fractional float)
+        31.7,           # 31.7 FAIL (fractional float)
+        32.0,           # 32.0 FAIL (whole float - strict policy: reject float entirely)
+        True,           # True FAIL (bool rejected despite being int subclass)
+        False,          # False FAIL (bool rejected)
+        float("nan"),   # NaN FAIL
+        float("inf"),   # +inf FAIL
+        float("-inf"),  # -inf FAIL
+        "32",           # "32" FAIL (string rejected)
+        None,           # None FAIL
+        [32],           # list FAIL
+    ],
+)
+def test_require_integer_in_range_failures(invalid_input):
+    """Verify require_integer_in_range rejects out-of-range ints, floats, bools, strings."""
+    with pytest.raises(KineFigValidationError):
+        require_integer_in_range(invalid_input, 3, 256, "segments")
+
+
+def test_require_integer_in_range_invalid_bounds():
+    """Verify require_integer_in_range raises ValueError for invalid bounds."""
+    with pytest.raises(ValueError, match="Invalid range"):
+        require_integer_in_range(10, 100, 5, "segments")
+    with pytest.raises(ValueError, match="Range bounds must be integers"):
+        require_integer_in_range(10, 3.0, 256, "segments")  # type: ignore
+    with pytest.raises(ValueError, match="Range bounds must be integers"):
+        require_integer_in_range(10, True, 256, "segments")  # type: ignore
+
+
+# ==============================================================================
+# Ball Joint Parameter Validation Tests
+# ==============================================================================
+
 def test_validate_ball_joint_parameters_valid():
     """Verify validate_ball_joint_parameters accepts standard valid dimensions."""
-    from addon.kinefig.core.validation import validate_ball_joint_parameters
-
-    # Should not raise
     validate_ball_joint_parameters(
         ball_diameter_mm=5.0,
         stem_diameter_mm=3.0,
@@ -116,30 +165,35 @@ def test_validate_ball_joint_parameters_valid():
 )
 def test_validate_ball_joint_parameters_non_positive_or_non_finite(bad_ball, bad_stem, bad_len):
     """Verify validate_ball_joint_parameters rejects <= 0 or non-finite dimensions."""
-    from addon.kinefig.core.validation import validate_ball_joint_parameters
-
     with pytest.raises(KineFigValidationError):
         validate_ball_joint_parameters(bad_ball, bad_stem, bad_len)
 
 
 def test_validate_ball_joint_parameters_stem_ge_ball():
     """Verify validate_ball_joint_parameters rejects stem diameter >= ball diameter."""
-    from addon.kinefig.core.validation import validate_ball_joint_parameters
-
-    # Equal
     with pytest.raises(KineFigValidationError, match="must be less than ball diameter"):
         validate_ball_joint_parameters(5.0, 5.0, 5.0)
 
-    # Greater
     with pytest.raises(KineFigValidationError, match="must be less than ball diameter"):
         validate_ball_joint_parameters(5.0, 6.0, 5.0)
 
 
-@pytest.mark.parametrize("bad_seg, bad_ring", [(2, 16), (32, 2), (0, 16), (32, -1), (500, 16)])
+@pytest.mark.parametrize(
+    "bad_seg, bad_ring",
+    [
+        (2, 16),
+        (32, 2),
+        (0, 16),
+        (32, -1),
+        (500, 16),
+        (31.7, 16),
+        (32, 15.9),
+        (32.0, 16),
+        (True, 16),
+        ("32", 16),
+    ],
+)
 def test_validate_ball_joint_parameters_invalid_tessellation(bad_seg, bad_ring):
-    """Verify validate_ball_joint_parameters rejects out-of-range segments or rings."""
-    from addon.kinefig.core.validation import validate_ball_joint_parameters
-
+    """Verify validate_ball_joint_parameters rejects out-of-range, non-int segments/rings."""
     with pytest.raises(KineFigValidationError):
         validate_ball_joint_parameters(5.0, 3.0, 5.0, segments=bad_seg, rings=bad_ring)
-

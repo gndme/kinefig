@@ -7,8 +7,13 @@
 - Operator `kinefig.create_ball_joint`: supports Undo, Redo panel, and 3D Cursor placement.
 - Sidebar N-panel UI: interactive inputs for Ball Diameter, Stem Diameter, and Stem Length.
 - Object naming & metadata: deterministic allocation (`KF_Joint_Ball_001`, `002`...) with parametric metadata (`kf_type="joint"`, `kf_joint_type="ball"`, dimensions, default axis +Z).
-- Real Blender packaged zip integration tests (`tests/test_blender_runtime.py`): asserts 100% 2-manifold edges, 0 boundary edges, positive volume, exact bounding box dimensions, and Undo.
+- Transactional geometry execution & rollback: introduced `KineFigGeometryError` and deterministic rollback of all allocated objects/meshes upon Boolean union or evaluation failure (HIGH-01).
+- Strict integer validation: added `require_integer_in_range()` strictly rejecting floats (including fractional and whole), booleans, strings, and non-finite values for segments and rings (MEDIUM-01).
+- Accurate temp prefix assertions: updated integration tests to assert zero orphan `_KF_TMP_` objects or mesh datablocks using `is_temp_object()` and `PREFIX_TEMP` (MEDIUM-02).
+- Factual metadata policy: eliminated uncomputed placeholder metadata (`kf_range_min`, `kf_range_max`, `kf_clearance_mm`, `kf_role`, `kf_side`) until respective engines exist (MEDIUM-03).
+- Real Blender packaged zip integration tests (`tests/test_blender_runtime.py`): asserts 100% 2-manifold edges, 0 boundary edges, positive volume, exact bounding box dimensions, Undo, and transactional rollback on failure.
 - Resolved LOW finding from PR-001: semantic precedence in `map_feature_for_issue_form()` ensuring "double ball" matches before "ball".
+
 
 ## 0.0.1 (PR-001 Foundation)
 - Initial KineFig development scaffold.

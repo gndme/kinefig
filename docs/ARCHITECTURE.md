@@ -51,15 +51,24 @@ UI
 - **Total Height**: `stem_length_m + ball_radius_m`.
 
 ### Parametric Metadata Schema
-Every generated joint carries custom properties for downstream inspection and tooling:
+Every generated joint carries only factual properties validated and computed at creation time:
 - `kf_type`: `"joint"`
 - `kf_joint_type`: `"ball"`
 - `kf_version`: KineFig version string
-- `kf_ball_diameter_mm`: Ball diameter in mm
-- `kf_stem_diameter_mm`: Stem diameter in mm
-- `kf_stem_length_mm`: Stem length in mm
+- `kf_ball_diameter_mm`: Ball diameter in mm (float)
+- `kf_stem_diameter_mm`: Stem diameter in mm (float)
+- `kf_stem_length_mm`: Stem length in mm (float)
 - `kf_axis`: Articulation/orientation axis (default `(0.0, 0.0, 1.0)`)
-- `kf_role`, `kf_side`, `kf_range_min`, `kf_range_max`, `kf_clearance_mm`: Schema placeholders.
+*Policy*: Uncomputed properties (e.g. `kf_range_min`, `kf_range_max`, `kf_clearance_mm`, `kf_role`, `kf_side`) are strictly omitted until their respective engines are implemented.
+
+### Transactional Geometry Policy
+- Geometry operations must be transactional.
+- If Boolean union, depsgraph evaluation, or postcondition checks fail:
+  - All allocated temporary and target objects, meshes, and modifiers are immediately and deterministically removed (`do_unlink=True`);
+  - Unrelated scene state is preserved untouched;
+  - A descriptive `KineFigGeometryError` is raised;
+  - The operator catches the error, logs it, and returns `{"CANCELLED"}` with a user-facing error report.
+
 
 ## Diagnostic & Bug Reporting Architecture
 

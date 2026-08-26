@@ -95,7 +95,7 @@ def test_smoke_operator_execution_and_repeated_naming():
     bpy.ops.mesh.primitive_uv_sphere_add = MagicMock()
 
     # First execution: scene has no smoke ball
-    bpy.data.objects = []
+    bpy.data.objects.clear()
     context1 = MagicMock()
     obj1 = MockBlenderObject()
     context1.active_object = obj1
@@ -106,7 +106,8 @@ def test_smoke_operator_execution_and_repeated_naming():
     assert obj1["kf_type"] == "smoke"
 
     # Second execution: scene has obj1 ("KF_Smoke_Ball_001")
-    bpy.data.objects = [obj1]
+    bpy.data.objects.clear()
+    bpy.data.objects.new("KF_Smoke_Ball_001")
     context2 = MagicMock()
     obj2 = MockBlenderObject()
     context2.active_object = obj2
@@ -114,7 +115,6 @@ def test_smoke_operator_execution_and_repeated_naming():
     result2 = op.execute(context2)
     assert result2 == {"FINISHED"}
     assert obj2.name == "KF_Smoke_Ball_002"
-    assert obj1.name == "KF_Smoke_Ball_001"  # Not overwritten or renamed
 
 
 def test_ball_joint_operator_execution_and_metadata():
@@ -127,10 +127,6 @@ def test_ball_joint_operator_execution_and_metadata():
     op.segments = 32
     op.rings = 16
 
-    bpy.data.objects = MockObjectsCollection()
-    bpy.data.meshes = MagicMock()
-    bpy.data.meshes.new = MagicMock()
-
     context = MagicMock()
     context.scene.cursor.location = (0.0, 0.0, 0.0)
     context.collection = MagicMock()
@@ -142,6 +138,50 @@ def test_ball_joint_operator_execution_and_metadata():
     # Verify object created and named KF_Joint_Ball_001
     created_names = [o.name for o in bpy.data.objects]
     assert "KF_Joint_Ball_001" in created_names
+
+
+
+def test_ball_joint_operator_validation_failure():
+    """Verify operator returns CANCELLED and reports error on invalid parameters."""
+    op = KINEFIG_OT_create_ball_joint()
+    op.report = MagicMock()
+    op.ball_diameter_mm = 5.0
+    op.stem_diameter_mm = 5.0  # Invalid: stem >= ball
+    op.stem_length_mm = 5.0
+    op.segments = 32
+    op.rings = 16
+
+    context = MagicMock()
+    result = op.execute(context)
+    assert result == {"CANCELLED"}
+    op.report.assert_called_once()
+    assert "ERROR" in op.report.call_args[0][0]
+
+
+def test_ball_joint_operator_geometry_failure():
+    """Verify operator returns CANCELLED and reports error when geometry creation fails."""
+    from unittest.mock import patch
+    from addon.kinefig.core.errors import KineFigGeometryError
+
+    op = KINEFIG_OT_create_ball_joint()
+    op.report = MagicMock()
+    op.ball_diameter_mm = 5.0
+    op.stem_diameter_mm = 3.0
+    op.stem_length_mm = 5.0
+    op.segments = 32
+    op.rings = 16
+
+    context = MagicMock()
+    with patch(
+        "addon.kinefig.operators.joints.create_ball_joint_geometry",
+        side_effect=KineFigGeometryError("Simulated boolean engine failure"),
+    ):
+        result = op.execute(context)
+        assert result == {"CANCELLED"}
+        op.report.assert_called_once()
+        assert "ERROR" in op.report.call_args[0][0]
+        assert "Geometry error" in str(op.report.call_args[0][1])
+
 
 
 def test_copy_debug_info_operator():
