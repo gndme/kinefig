@@ -46,3 +46,32 @@ def require_in_range(
             f"{name} must be between {min_f} and {max_f}, got {value}"
         )
     return val
+
+
+def validate_ball_joint_parameters(
+    ball_diameter_mm: Numeric,
+    stem_diameter_mm: Numeric,
+    stem_length_mm: Numeric,
+    segments: int = 32,
+    rings: int = 16,
+) -> None:
+    """Validate parametric inputs for a male ball joint.
+
+    Enforces:
+    - ball_diameter_mm > 0 and finite
+    - stem_diameter_mm > 0 and finite
+    - stem_length_mm > 0 and finite
+    - stem_diameter_mm < ball_diameter_mm (stem must fit inside the ball)
+    - segments and rings in valid integer bounds [3, 256]
+    """
+    ball_d = require_positive(ball_diameter_mm, "ball_diameter_mm")
+    stem_d = require_positive(stem_diameter_mm, "stem_diameter_mm")
+    require_positive(stem_length_mm, "stem_length_mm")
+
+    if stem_d >= ball_d:
+        raise KineFigValidationError(
+            f"Stem diameter ({stem_d} mm) must be less than ball diameter ({ball_d} mm)"
+        )
+
+    require_in_range(segments, 3, 256, "segments")
+    require_in_range(rings, 3, 256, "rings")

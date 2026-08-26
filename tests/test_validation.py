@@ -84,3 +84,62 @@ def test_require_in_range_inverted_bounds():
     """Verify require_in_range raises ValueError if min > max."""
     with pytest.raises(ValueError, match="Invalid range"):
         require_in_range(5.0, 10.0, 2.0, "factor")
+
+
+def test_validate_ball_joint_parameters_valid():
+    """Verify validate_ball_joint_parameters accepts standard valid dimensions."""
+    from addon.kinefig.core.validation import validate_ball_joint_parameters
+
+    # Should not raise
+    validate_ball_joint_parameters(
+        ball_diameter_mm=5.0,
+        stem_diameter_mm=3.0,
+        stem_length_mm=5.0,
+        segments=32,
+        rings=16,
+    )
+
+
+@pytest.mark.parametrize(
+    "bad_ball, bad_stem, bad_len",
+    [
+        (0.0, 3.0, 5.0),
+        (-5.0, 3.0, 5.0),
+        (5.0, 0.0, 5.0),
+        (5.0, -3.0, 5.0),
+        (5.0, 3.0, 0.0),
+        (5.0, 3.0, -5.0),
+        (float("nan"), 3.0, 5.0),
+        (5.0, float("inf"), 5.0),
+        (5.0, 3.0, float("-inf")),
+    ],
+)
+def test_validate_ball_joint_parameters_non_positive_or_non_finite(bad_ball, bad_stem, bad_len):
+    """Verify validate_ball_joint_parameters rejects <= 0 or non-finite dimensions."""
+    from addon.kinefig.core.validation import validate_ball_joint_parameters
+
+    with pytest.raises(KineFigValidationError):
+        validate_ball_joint_parameters(bad_ball, bad_stem, bad_len)
+
+
+def test_validate_ball_joint_parameters_stem_ge_ball():
+    """Verify validate_ball_joint_parameters rejects stem diameter >= ball diameter."""
+    from addon.kinefig.core.validation import validate_ball_joint_parameters
+
+    # Equal
+    with pytest.raises(KineFigValidationError, match="must be less than ball diameter"):
+        validate_ball_joint_parameters(5.0, 5.0, 5.0)
+
+    # Greater
+    with pytest.raises(KineFigValidationError, match="must be less than ball diameter"):
+        validate_ball_joint_parameters(5.0, 6.0, 5.0)
+
+
+@pytest.mark.parametrize("bad_seg, bad_ring", [(2, 16), (32, 2), (0, 16), (32, -1), (500, 16)])
+def test_validate_ball_joint_parameters_invalid_tessellation(bad_seg, bad_ring):
+    """Verify validate_ball_joint_parameters rejects out-of-range segments or rings."""
+    from addon.kinefig.core.validation import validate_ball_joint_parameters
+
+    with pytest.raises(KineFigValidationError):
+        validate_ball_joint_parameters(5.0, 3.0, 5.0, segments=bad_seg, rings=bad_ring)
+

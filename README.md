@@ -24,7 +24,7 @@ Product Owner / Antigravity
     ↓ Git push
 GitHub Actions CI (Python 3.10-3.12 + Headless Blender 4.2.0 Linux)
     ↓ Unit tests (pytest) + real Blender runtime tests + extension validation
-Tester Extension Artifact: kinefig-<version>-pr001-<sha>.zip
+Tester Extension Artifact: kinefig-<version>-<pr_id>-<sha>.zip
     ↓
 3D Specialist Workstation (Real Blender 4.2+)
     ↓ UAT Testing
@@ -50,7 +50,7 @@ python -m pytest -v
 python scripts/build_extension.py
 ```
 
-Outputs deterministic extension package to `dist/kinefig-<version>.zip` and traceable tester artifact `dist/kinefig-<version>-pr001-<sha>.zip`.
+Outputs deterministic extension package to `dist/kinefig-<version>.zip` and traceable tester artifact `dist/kinefig-<version>-<pr_id>-<sha>.zip`.
 
 ### Real Blender 4.2 Validation (CI or local if Blender installed)
 
@@ -58,10 +58,13 @@ Outputs deterministic extension package to `dist/kinefig-<version>.zip` and trac
 # Validate extension package schema
 blender --command extension validate dist/kinefig-0.0.1.zip
 
-# Run headless runtime integration test
+# Run headless runtime integration test on packaged zip artifact
 blender --background --factory-startup --python tests/test_blender_runtime.py
 ```
 
 ## Status
 
-**PR-001 Foundation Completed.** Includes core units, validation, naming, build info, structured logging, diagnostics, and UAT bug reporting pipeline. Ready for independent re-review.
+**PR-002 Ball Joint Geometry Core (In Progress)**:
+- Implements parametric male ball joint geometry with mm precision and exact watertight 2-manifold Boolean Union.
+- Sidebar N-panel provides interactive controls for Ball Diameter, Stem Diameter, and Stem Length.
+- *Known Limitation*: PR-002 provides the male ball joint core. The matching female socket engine will be introduced in PR-003.

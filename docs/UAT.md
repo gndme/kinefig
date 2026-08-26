@@ -87,8 +87,21 @@ Check:
 
 ---
 
-### KF-UAT-JOINT-001 — Ball Joint
-Goal: Create a neck-style ball joint and matching socket.
+### KF-UAT-JOINT-001 — Male Ball Joint (PR-002)
+
+Goal:
+Create a parametric male ball joint with stem suitable for neck, wrist, and torso figure articulation experiments.
+
+Check:
+- Ball silhouette and spherical surface quality;
+- Stem proportions (diameter, length) and seamless solid attachment without internal faces;
+- Creation at 3D Cursor location with local joint axis along +Z;
+- Sequential naming (`KF_Joint_Ball_001`, `KF_Joint_Ball_002`...);
+- Interactive tweakability in Operator Redo panel (F9);
+- Undo removes generated joint without leaving temporary helper objects;
+- Visual acceptability for collectible articulated figures;
+- *Note*: Matching female socket cavity will be added in PR-003.
+
 
 ### KF-UAT-JOINT-002 — Double Ball
 Goal: Create a double-ball connector suitable for wrist/torso/neck experimentation.

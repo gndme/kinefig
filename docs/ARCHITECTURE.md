@@ -33,7 +33,36 @@ UI
 4. **STL & Export Workflow (V1 Roadmap)**:
    - When exporting for 3D printing (slicers that assume 1 unit = 1 mm), the exporter will apply the necessary scaling factor (1000x) so that a 10 mm figure joint exports as exactly 10 mm in the slicer.
 
+## Joint Geometry Policy & Ball Joint Core (PR-002)
+
+### Manifold Union vs Overlapping Meshes
+- **Policy Choice**: KineFig uses **Exact Boolean Union** for articulated figure joints.
+- Rather than leaving overlapping, self-intersecting mesh shells inside a single datablock, the geometry engine applies Blender's `EXACT` boolean union solver to dissolve internal geometry and weld the intersection seam into a continuous, watertight 2-manifold surface.
+- **Benefits**:
+  - Direct 3D print readiness across all slicers (Cura, PrusaSlicer, Bambu Studio) without non-manifold or self-intersection warnings;
+  - Clean foundation for future socket subtraction, chamfers, and clearances without internal face artifacts.
+
+### Transforms & Coordinate Conventions
+- **Creation Location**: Default is the active 3D Cursor location (`context.scene.cursor.location`).
+- **Orientation**: Default local joint axis points along **+Z** (from the stem base towards the spherical ball center).
+- **Local Origin**: `(0, 0, 0)` is positioned at the base of the stem.
+- **Stem Cylinder**: Extends from `z = 0` to `z = stem_length_m`.
+- **Ball Sphere**: Centered at `(0, 0, stem_length_m)` with radius `ball_diameter_m / 2.0`.
+- **Total Height**: `stem_length_m + ball_radius_m`.
+
+### Parametric Metadata Schema
+Every generated joint carries custom properties for downstream inspection and tooling:
+- `kf_type`: `"joint"`
+- `kf_joint_type`: `"ball"`
+- `kf_version`: KineFig version string
+- `kf_ball_diameter_mm`: Ball diameter in mm
+- `kf_stem_diameter_mm`: Stem diameter in mm
+- `kf_stem_length_mm`: Stem length in mm
+- `kf_axis`: Articulation/orientation axis (default `(0.0, 0.0, 1.0)`)
+- `kf_role`, `kf_side`, `kf_range_min`, `kf_range_max`, `kf_clearance_mm`: Schema placeholders.
+
 ## Diagnostic & Bug Reporting Architecture
+
 
 ### Security Rule
 - **NO embedded tokens or secrets**: KineFig never embeds GitHub Personal Access Tokens, OAuth secrets, or write credentials in client add-on code.
