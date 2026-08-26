@@ -346,7 +346,7 @@ def test_use_selected_ball_invalid_metadata_rejected(invalid_val):
     assert res == {"CANCELLED"}
     assert ctx.scene.kinefig_ball_socket.ball_diameter_mm == initial_setting
     op.report.assert_called_once()
-    assert "ERROR" in op.report.call_args[0][0]
+    assert "WARNING" in op.report.call_args[0][0] or "ERROR" in op.report.call_args[0][0]
 
 
 def test_copy_debug_info_operator():

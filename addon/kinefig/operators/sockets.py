@@ -4,7 +4,7 @@ import bpy
 from ..geometry.sockets import create_ball_socket_geometry
 from ..core.errors import KineFigValidationError, KineFigGeometryError
 from ..core.validation import require_positive
-from ..core.logging import log_error, log_info
+from ..core.logging import log_error, log_info, log_warning
 
 
 class KINEFIG_OT_create_ball_socket(bpy.types.Operator):
@@ -139,14 +139,15 @@ class KINEFIG_OT_use_selected_ball(bpy.types.Operator):
 
         ball_d_raw = obj.get("kf_ball_diameter_mm")
         if ball_d_raw is None:
-            self.report({"ERROR"}, f"Selected ball joint {obj.name} has no kf_ball_diameter_mm metadata")
+            self.report({"WARNING"}, f"Selected ball joint {obj.name} has no kf_ball_diameter_mm metadata")
+            log_warning(f"Selected ball joint {obj.name} has no kf_ball_diameter_mm metadata")
             return {"CANCELLED"}
 
         try:
             val = require_positive(ball_d_raw, "kf_ball_diameter_mm")
         except (KineFigValidationError, Exception) as exc:
-            self.report({"ERROR"}, f"Invalid ball diameter metadata on {obj.name}: {exc}")
-            log_error(f"Failed to use selected ball metadata from {obj.name}: {exc}")
+            self.report({"WARNING"}, f"Invalid ball diameter metadata on {obj.name}: {exc}")
+            log_warning(f"Failed to use selected ball metadata from {obj.name}: {exc}")
             return {"CANCELLED"}
 
         if hasattr(context, "scene") and hasattr(context.scene, "kinefig_ball_socket"):
