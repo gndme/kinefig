@@ -303,27 +303,33 @@ def run_tests():
         assert "KF_Joint_Ball_001" in bpy.data.objects, "KF_Joint_Ball_001 missing before Undo"
         assert "KF_Joint_Ball_002" in bpy.data.objects, "KF_Joint_Ball_002 missing before Undo"
 
-        try:
-            if hasattr(bpy.ops.ed, "undo") and bpy.ops.ed.undo.poll():
-                undo_call_res = bpy.ops.ed.undo()
-                assert undo_call_res == {"FINISHED"}, f"bpy.ops.ed.undo returned {undo_call_res}"
-                assert undo_test_obj_name not in bpy.data.objects, (
-                    f"Undo state transition assertion failed: {undo_test_obj_name} was NOT removed by Undo!"
-                )
-                assert "User_Target_Mesh" in bpy.data.objects, (
-                    "Undo corrupted scene: User_Target_Mesh was removed by Undo!"
-                )
-                assert "KF_Joint_Ball_001" in bpy.data.objects, (
-                    "Undo corrupted scene: KF_Joint_Ball_001 was improperly removed by Undo!"
-                )
-                assert "KF_Joint_Ball_002" in bpy.data.objects, (
-                    "Undo corrupted scene: KF_Joint_Ball_002 was improperly removed by Undo!"
-                )
-                print(f"  -> PASSED: Undo removed {undo_test_obj_name}; verified earlier and unrelated objects preserved")
-            else:
-                print("  -> INFO: AUTOMATED UNDO: NOT VERIFIED IN HEADLESS (bpy.ops.ed.undo.poll() returned False in background mode)")
-        except Exception as e:
-            print(f"  -> INFO: AUTOMATED UNDO: NOT VERIFIED IN HEADLESS ({e})")
+        undo_supported = (
+            hasattr(bpy.ops.ed, "undo")
+            and bpy.ops.ed.undo.poll()
+        )
+
+        if not undo_supported:
+            print(
+                "  -> INFO: AUTOMATED UNDO: NOT VERIFIED IN HEADLESS "
+                "(bpy.ops.ed.undo.poll() returned False in background mode)"
+            )
+        else:
+            undo_call_res = bpy.ops.ed.undo()
+            assert undo_call_res == {"FINISHED"}, f"bpy.ops.ed.undo returned {undo_call_res}"
+            assert undo_test_obj_name not in bpy.data.objects, (
+                f"Undo state transition assertion failed: {undo_test_obj_name} was NOT removed by Undo!"
+            )
+            assert "User_Target_Mesh" in bpy.data.objects, (
+                "Undo corrupted scene: User_Target_Mesh was removed by Undo!"
+            )
+            assert "KF_Joint_Ball_001" in bpy.data.objects, (
+                "Undo corrupted scene: KF_Joint_Ball_001 was improperly removed by Undo!"
+            )
+            assert "KF_Joint_Ball_002" in bpy.data.objects, (
+                "Undo corrupted scene: KF_Joint_Ball_002 was improperly removed by Undo!"
+            )
+            print(f"  -> PASSED: Undo removed {undo_test_obj_name}; verified earlier and unrelated objects preserved")
+
 
         # 11. Cleanup & Final Unregister
         print("\n[11/11] Cleaning up test objects and unregistering...")
