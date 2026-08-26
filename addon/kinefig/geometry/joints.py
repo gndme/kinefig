@@ -83,12 +83,12 @@ def create_ball_joint_geometry(
     bmesh.ops.create_cone(
         bm_cyl,
         cap_ends=True,
-        cap_tri=False,
         segments=int(segments),
         radius1=stem_radius_m,
         radius2=stem_radius_m,
         depth=stem_length_m,
     )
+
     # Cylinder in bmesh.ops.create_cone is centered at 0 (from -depth/2 to +depth/2).
     # Translate so base is at z = 0 and top is at z = stem_length_m:
     bmesh.ops.translate(
