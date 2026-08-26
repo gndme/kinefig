@@ -99,11 +99,11 @@ def run_tests():
         import kinefig
         from kinefig.core.build_info import get_version_string, get_short_sha
         from kinefig.core.naming import PREFIX_TEMP, is_temp_object
-        from kinefig.core.errors import KineFigGeometryError
+        from kinefig.core.errors import KineFigGeometryError, KineFigValidationError
         from kinefig.geometry import joints as joints_mod
         from kinefig.geometry import sockets as sockets_mod
-        from kinefig.geometry.joints import create_ball_joint_geometry
-        from kinefig.geometry.sockets import create_ball_socket_geometry
+        from kinefig.geometry.joints import create_ball_joint_geometry, create_peg_geometry
+        from kinefig.geometry.sockets import create_ball_socket_geometry, create_peg_socket_geometry
         from kinefig.ui.panel import _get_valid_selected_peg_diameter, _get_valid_selected_ball_diameter
 
         print(f"Imported package from: {kinefig.__file__}")
@@ -617,24 +617,31 @@ def run_tests():
         peg_obj["kf_peg_diameter_mm"] = orig_peg_d
         print("  -> PASSED: All malformed metadata cases (abc, None, NaN, +/-inf, 0, -1) safely rejected without scene mutation")
 
-        # 18. Testing Peg / Peg Socket Transactional Rollback on failure (PR-005)
-        print("\n[18/19] Testing peg transactional rollback on parameter validation error...")
+        # 18. Testing Peg Core Validation & Zero-Leak Rollback (PR-005)
+        print("\n[18/19] Testing peg core validation error and transactional rollback...")
         baseline_peg_objects = set(bpy.data.objects.keys())
         baseline_peg_meshes = set(bpy.data.meshes.keys())
 
-        peg_err = False
+        peg_val_err = False
         try:
-            bpy.ops.kinefig.create_peg_joint(
+            create_peg_geometry(
+                context=bpy.context,
                 peg_diameter_mm=-1.0,
                 peg_length_mm=5.0,
+                taper_angle_deg=0.0,
+                segments=32,
             )
-        except RuntimeError:
-            peg_err = True
+        except KineFigValidationError:
+            peg_val_err = True
 
-        assert peg_err, "Expected RuntimeError / cancellation on negative peg diameter"
-        assert set(bpy.data.objects.keys()) == baseline_peg_objects
-        assert set(bpy.data.meshes.keys()) == baseline_peg_meshes
-        print("  -> PASSED: Peg creation error rolled back cleanly with zero leaks")
+        assert peg_val_err, "Expected KineFigValidationError on negative peg diameter"
+        assert set(bpy.data.objects.keys()) == baseline_peg_objects, (
+            f"Object leak detected after validation error: {set(bpy.data.objects.keys()) - baseline_peg_objects}"
+        )
+        assert set(bpy.data.meshes.keys()) == baseline_peg_meshes, (
+            f"Mesh leak detected after validation error: {set(bpy.data.meshes.keys()) - baseline_peg_meshes}"
+        )
+        print("  -> PASSED: Negative peg diameter rejected by core validation; zero leaks, state preserved")
 
         # 19. Testing Undo State Transition for Peg Joints (PR-005)
         print("\n[19/19] Testing Undo state transition for Peg joints...")
