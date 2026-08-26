@@ -66,9 +66,10 @@ blender --background --factory-startup --python tests/test_blender_runtime.py
 
 - **PR-001 Foundation Skeleton**: Merged to `main`.
 - **PR-002 Parametric Male Ball Joint**: Merged to `main`.
-- **PR-003 Parametric Female Ball Socket Cavity Core (In Progress)**:
-  - Implements parametric female ball socket cavity tool geometry with radial clearance contract (`socket_diameter = ball_diameter + 2 * clearance`).
-  - Watertight, closed 2-manifold cutter volume trimmed cleanly at insertion plane `z = 0`.
-  - Contextual UI operator `Match Selected Ball` to copy diameter directly from active male joint.
-  - *Known Limitation*: PR-003 provides the negative/cutter socket cavity tool geometry. Automatic Boolean subtraction into arbitrary figure body meshes belongs to future socket seating workflows.
+- **PR-003 Parametric Female Ball Socket Cavity Core**: Merged to `main`.
+- **PR-004 Parametric Double Ball / Dumbbell Joint Core (In Progress)**:
+  - Creates a single coherent printable joint solid with Ball A at origin, connecting neck stem along +Z, and Ball B at center distance along +Z.
+  - Multi-stage Exact Boolean union eliminating internal overlapping geometry.
+  - Full multi-stage transactional rollback on any stage failure.
+  - *Known Limitation*: PR-004 provides male double-ball joint geometry. Socket clearance is applied to matching female sockets, not by altering nominal ball dimensions.
 

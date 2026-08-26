@@ -31,8 +31,8 @@ Delivered:
 
 Exit gate: **PASSED (Merged into main)**.
 
-### PR-003 — Socket Engine Core (IN PROGRESS)
-Build:
+### PR-003 — Socket Engine Core (COMPLETED)
+Delivered:
 - Parametric female socket cavity generator for ball joints;
 - Radial clearance offset contract (`socket_diameter = ball_diameter + 2 * clearance`);
 - Watertight, closed 2-manifold cutter volume trimmed cleanly at insertion plane `z = 0`;
@@ -41,11 +41,16 @@ Build:
 - Transactional rollback on Boolean failure and factual metadata schema;
 - Real Blender packaged zip integration tests for dimensions, manifoldness, and clearance invariant.
 
-### PR-004 — Double Ball Joint (Dumbbell)
+Exit gate: **PASSED (Merged into main)**.
+
+### PR-004 — Double Ball Joint (Dumbbell) Core (IN PROGRESS)
 Build on Ball Joint and Socket primitives:
-- Independent dual ball dimensions;
-- Center connecting shaft;
-- Wrist, neck, and torso articulation presets.
+- Single coherent 2-manifold printable solid (Ball A + central stem + Ball B);
+- Independent dual ball dimensions (`ball_a_diameter_mm`, `ball_b_diameter_mm`), connecting stem diameter (`stem_diameter_mm < min(ball_a, ball_b)`), and center distance (`center_distance_mm`);
+- Precise center distance semantics: distance between Ball A center $(0,0,0)$ and Ball B center $(0,0,\text{center\_distance})$ along canonical $+Z$ axis;
+- Multi-stage Exact Boolean union with intermediate cleanups eliminating internal overlapping geometry;
+- Full multi-stage transactional rollback on Boolean failure;
+- Real Blender packaged zip integration tests for symmetric & asymmetric double balls, manifoldness, rollback, and Undo.
 
 ### PR-005 — Peg + Socket
 Build:

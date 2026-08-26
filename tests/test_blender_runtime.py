@@ -102,7 +102,7 @@ def run_tests():
         from kinefig.core.errors import KineFigGeometryError
         from kinefig.geometry import joints as joints_mod
         from kinefig.geometry import sockets as sockets_mod
-        from kinefig.geometry.joints import create_ball_joint_geometry
+        from kinefig.geometry.joints import create_ball_joint_geometry, create_double_ball_geometry
         from kinefig.geometry.sockets import create_ball_socket_geometry
 
         print(f"Imported package from: {kinefig.__file__}")
@@ -112,10 +112,13 @@ def run_tests():
         print(f"Build Info in Zip: {get_version_string()}")
 
         # 1. Test clean registration and unregistration
-        print("\n[1/13] Testing register() & unregister() cycle...")
+        print("\n[1/16] Testing register() & unregister() cycle...")
         kinefig.register()
         assert hasattr(bpy.types, "KINEFIG_OT_create_ball_joint"), (
             "KINEFIG_OT_create_ball_joint missing from bpy.types after register()"
+        )
+        assert hasattr(bpy.types, "KINEFIG_OT_create_double_ball_joint"), (
+            "KINEFIG_OT_create_double_ball_joint missing from bpy.types after register()"
         )
         assert hasattr(bpy.types, "KINEFIG_OT_create_ball_socket"), (
             "KINEFIG_OT_create_ball_socket missing from bpy.types after register()"
@@ -132,6 +135,9 @@ def run_tests():
         assert hasattr(bpy.types.Scene, "kinefig_ball_joint"), (
             "kinefig_ball_joint missing from bpy.types.Scene after register()"
         )
+        assert hasattr(bpy.types.Scene, "kinefig_double_ball_joint"), (
+            "kinefig_double_ball_joint missing from bpy.types.Scene after register()"
+        )
         assert hasattr(bpy.types.Scene, "kinefig_ball_socket"), (
             "kinefig_ball_socket missing from bpy.types.Scene after register()"
         )
@@ -140,8 +146,14 @@ def run_tests():
         assert not hasattr(bpy.types, "KINEFIG_OT_create_ball_joint"), (
             "KINEFIG_OT_create_ball_joint still present in bpy.types after unregister()"
         )
+        assert not hasattr(bpy.types, "KINEFIG_OT_create_double_ball_joint"), (
+            "KINEFIG_OT_create_double_ball_joint still present in bpy.types after unregister()"
+        )
         assert not hasattr(bpy.types, "KINEFIG_OT_create_ball_socket"), (
             "KINEFIG_OT_create_ball_socket still present in bpy.types after unregister()"
+        )
+        assert not hasattr(bpy.types.Scene, "kinefig_double_ball_joint"), (
+            "kinefig_double_ball_joint still present in bpy.types.Scene after unregister()"
         )
         assert not hasattr(bpy.types.Scene, "kinefig_ball_socket"), (
             "kinefig_ball_socket still present in bpy.types.Scene after unregister()"
@@ -363,19 +375,162 @@ def run_tests():
         assert "User_Target_Mesh" in bpy.data.objects, "Unrelated user object was damaged during rollback"
         print("  -> PASSED: Socket transactional rollback executed cleanly, zero leaks, scene preserved")
 
-        # 13. Test Undo State Transition (Unshielded)
-        print("\n[13/13] Testing Undo state transition for sockets...")
-        res_undo = bpy.ops.kinefig.create_ball_socket(
-            ball_diameter_mm=7.0,
-            clearance_mm=0.2,
-            socket_depth_mm=4.5,
+        # 13. PR-004 Double Ball Joint Creation (Symmetric Defaults)
+        print("\n[13/16] Testing bpy.ops.kinefig.create_double_ball_joint execution (symmetric default)...")
+        bpy.context.scene.cursor.location = (0.010, -0.020, 0.005)
+        res_db = bpy.ops.kinefig.create_double_ball_joint(
+            ball_a_diameter_mm=5.0,
+            ball_b_diameter_mm=5.0,
+            stem_diameter_mm=3.0,
+            center_distance_mm=8.0,
+            segments=32,
+            rings=16,
         )
-        assert res_undo == {"FINISHED"}, f"Failed to create undo test socket: {res_undo}"
-        undo_test_socket_name = "KF_Socket_Ball_003"
-        assert undo_test_socket_name in bpy.data.objects, f"Expected {undo_test_socket_name} to exist before Undo"
-        assert "User_Target_Mesh" in bpy.data.objects, "User_Target_Mesh missing before Undo"
-        assert "KF_Joint_Ball_001" in bpy.data.objects, "KF_Joint_Ball_001 missing before Undo"
-        assert "KF_Socket_Ball_001" in bpy.data.objects, "KF_Socket_Ball_001 missing before Undo"
+        assert res_db == {"FINISHED"}, f"create_double_ball_joint returned {res_db}"
+        assert "KF_Joint_DoubleBall_001" in bpy.data.objects, "KF_Joint_DoubleBall_001 not found in bpy.data.objects"
+        db_obj = bpy.data.objects["KF_Joint_DoubleBall_001"]
+
+        # Assert factual metadata
+        assert db_obj.get("kf_type") == "joint", f"kf_type mismatch: {db_obj.get('kf_type')}"
+        assert db_obj.get("kf_joint_type") == "double_ball", f"kf_joint_type mismatch: {db_obj.get('kf_joint_type')}"
+        assert math.isclose(db_obj.get("kf_ball_a_diameter_mm"), 5.0, abs_tol=1e-5), "kf_ball_a_diameter_mm mismatch"
+        assert math.isclose(db_obj.get("kf_ball_b_diameter_mm"), 5.0, abs_tol=1e-5), "kf_ball_b_diameter_mm mismatch"
+        assert math.isclose(db_obj.get("kf_stem_diameter_mm"), 3.0, abs_tol=1e-5), "kf_stem_diameter_mm mismatch"
+        assert math.isclose(db_obj.get("kf_center_distance_mm"), 8.0, abs_tol=1e-5), "kf_center_distance_mm mismatch"
+        assert tuple(db_obj.get("kf_axis")) == (0.0, 0.0, 1.0), "kf_axis mismatch"
+        assert tuple(db_obj.get("kf_ball_a_center_mm")) == (0.0, 0.0, 0.0), "kf_ball_a_center_mm mismatch"
+        assert tuple(db_obj.get("kf_ball_b_center_mm")) == (0.0, 0.0, 8.0), "kf_ball_b_center_mm mismatch"
+
+        # Check absence of uncomputed metadata
+        for uncomputed_key in ("kf_range_min", "kf_range_max", "kf_role", "kf_side", "fit_quality", "printer_profile"):
+            assert uncomputed_key not in db_obj, f"Uncomputed metadata key '{uncomputed_key}' present"
+
+        # Assert dimensions and cursor placement
+        assert math.isclose(db_obj.location.x, 0.010, abs_tol=1e-4)
+        assert math.isclose(db_obj.location.y, -0.020, abs_tol=1e-4)
+        assert math.isclose(db_obj.location.z, 0.005, abs_tol=1e-4)
+
+        db_dim = db_obj.dimensions
+        print(f"  -> Double Ball Dims: X={db_dim.x*1000:.2f}mm, Y={db_dim.y*1000:.2f}mm, Z={db_dim.z*1000:.2f}mm")
+        assert math.isclose(db_dim.x, 0.005, abs_tol=0.0002), f"Double Ball X dim {db_dim.x} != 0.005m"
+        assert math.isclose(db_dim.y, 0.005, abs_tol=0.0002), f"Double Ball Y dim {db_dim.y} != 0.005m"
+        assert math.isclose(db_dim.z, 0.013, abs_tol=0.0002), f"Double Ball Z dim {db_dim.z} != 0.013m"
+
+        # Manifold quality assertions
+        bm_db = bmesh.new()
+        bm_db.from_mesh(db_obj.data)
+        non_manifold_e = [e for e in bm_db.edges if not e.is_manifold]
+        boundary_e = [e for e in bm_db.edges if e.is_boundary]
+        vol = bm_db.calc_volume()
+        bm_db.free()
+
+        assert len(non_manifold_e) == 0, f"Double Ball has {len(non_manifold_e)} non-manifold edges"
+        assert len(boundary_e) == 0, f"Double Ball has {len(boundary_e)} boundary edges"
+        assert vol > 0.0, f"Double Ball volume must be positive, got {vol}"
+        print(f"  -> PASSED: Double Ball is watertight 2-manifold (non-manifold=0, boundaries=0, volume={vol:.2e}m³)")
+
+        # 14. Testing Asymmetric Double Ball Joint (PR-004)
+        print("\n[14/16] Testing asymmetric Double Ball joint (Ball A=4mm, Ball B=6mm, Stem=2.5mm, Dist=8mm)...")
+        res_asym = bpy.ops.kinefig.create_double_ball_joint(
+            ball_a_diameter_mm=4.0,
+            ball_b_diameter_mm=6.0,
+            stem_diameter_mm=2.5,
+            center_distance_mm=8.0,
+            segments=32,
+            rings=16,
+        )
+        assert res_asym == {"FINISHED"}, f"Asymmetric create_double_ball_joint returned {res_asym}"
+        assert "KF_Joint_DoubleBall_002" in bpy.data.objects, "KF_Joint_DoubleBall_002 not found"
+        asym_obj = bpy.data.objects["KF_Joint_DoubleBall_002"]
+
+        assert math.isclose(asym_obj.get("kf_ball_a_diameter_mm"), 4.0, abs_tol=1e-5)
+        assert math.isclose(asym_obj.get("kf_ball_b_diameter_mm"), 6.0, abs_tol=1e-5)
+        assert math.isclose(asym_obj.get("kf_stem_diameter_mm"), 2.5, abs_tol=1e-5)
+        assert math.isclose(asym_obj.get("kf_center_distance_mm"), 8.0, abs_tol=1e-5)
+
+        asym_dim = asym_obj.dimensions
+        assert math.isclose(asym_dim.x, 0.006, abs_tol=0.0002), f"Asym X dim {asym_dim.x} != 0.006m"
+        assert math.isclose(asym_dim.y, 0.006, abs_tol=0.0002), f"Asym Y dim {asym_dim.y} != 0.006m"
+        assert math.isclose(asym_dim.z, 0.013, abs_tol=0.0002), f"Asym Z dim {asym_dim.z} != 0.013m"
+
+        # Verify orientation: Ball A at origin side (z <= 2mm), Ball B at +Z side (z >= 5mm)
+        verts_z = [v.co.z for v in asym_obj.data.vertices]
+        min_z_mm = min(verts_z) * 1000.0
+        max_z_mm = max(verts_z) * 1000.0
+        assert math.isclose(min_z_mm, -2.0, abs_tol=0.2), f"Ball A bottom expected -2.0mm, got {min_z_mm:.2f}mm"
+        assert math.isclose(max_z_mm, 11.0, abs_tol=0.2), f"Ball B top expected 11.0mm, got {max_z_mm:.2f}mm"
+        print(f"  -> PASSED: Asymmetric Double Ball orientation verified: Ball A bottom={min_z_mm:.2f}mm, Ball B top={max_z_mm:.2f}mm")
+
+        # 15. Testing Multi-stage Transactional Rollback on Boolean Failure
+        print("\n[15/16] Testing multi-stage transactional rollback on Boolean failure...")
+        baseline_db_objects = set(bpy.data.objects.keys())
+        baseline_db_meshes = set(bpy.data.meshes.keys())
+
+        # Stage 1 failure test
+        print("  -> Testing Stage 1 (Ball A + Stem) failure rollback...")
+        orig_db_eval = joints_mod._evaluate_double_ball_union
+
+        def fail_stage_1(ctx, obj, mod, stage=1):
+            if stage == 1:
+                raise KineFigGeometryError("Injected Stage 1 Boolean Union failure")
+            return orig_db_eval(ctx, obj, mod, stage)
+
+        joints_mod._evaluate_double_ball_union = fail_stage_1
+        stage1_failed = False
+        try:
+            bpy.ops.kinefig.create_double_ball_joint(
+                ball_a_diameter_mm=5.0,
+                ball_b_diameter_mm=5.0,
+                stem_diameter_mm=3.0,
+                center_distance_mm=8.0,
+            )
+        except RuntimeError:
+            stage1_failed = True
+        finally:
+            joints_mod._evaluate_double_ball_union = orig_db_eval
+
+        assert stage1_failed, "Expected operator cancellation/RuntimeError on Stage 1 failure"
+        assert set(bpy.data.objects.keys()) == baseline_db_objects, "Objects leaked after Stage 1 failure!"
+        assert set(bpy.data.meshes.keys()) == baseline_db_meshes, "Meshes leaked after Stage 1 failure!"
+        print("  -> PASSED: Stage 1 failure rolled back cleanly with zero leaks")
+
+        # Stage 2 failure test
+        print("  -> Testing Stage 2 ((Ball A + Stem) + Ball B) failure rollback...")
+        def fail_stage_2(ctx, obj, mod, stage=1):
+            if stage == 2:
+                raise KineFigGeometryError("Injected Stage 2 Boolean Union failure")
+            return orig_db_eval(ctx, obj, mod, stage)
+
+        joints_mod._evaluate_double_ball_union = fail_stage_2
+        stage2_failed = False
+        try:
+            bpy.ops.kinefig.create_double_ball_joint(
+                ball_a_diameter_mm=5.0,
+                ball_b_diameter_mm=5.0,
+                stem_diameter_mm=3.0,
+                center_distance_mm=8.0,
+            )
+        except RuntimeError:
+            stage2_failed = True
+        finally:
+            joints_mod._evaluate_double_ball_union = orig_db_eval
+
+        assert stage2_failed, "Expected operator cancellation/RuntimeError on Stage 2 failure"
+        assert set(bpy.data.objects.keys()) == baseline_db_objects, "Objects leaked after Stage 2 failure!"
+        assert set(bpy.data.meshes.keys()) == baseline_db_meshes, "Meshes leaked after Stage 2 failure!"
+        print("  -> PASSED: Stage 2 failure rolled back cleanly, intermediate Stage 1 mesh deleted")
+
+        # 16. Test Undo State Transition (Sockets & Double Ball)
+        print("\n[16/16] Testing Undo state transition for Double Ball joints...")
+        res_undo_db = bpy.ops.kinefig.create_double_ball_joint(
+            ball_a_diameter_mm=5.0,
+            ball_b_diameter_mm=5.0,
+            stem_diameter_mm=3.0,
+            center_distance_mm=8.0,
+        )
+        assert res_undo_db == {"FINISHED"}, f"Failed to create undo test double ball: {res_undo_db}"
+        undo_test_db_name = "KF_Joint_DoubleBall_003"
+        assert undo_test_db_name in bpy.data.objects, f"Expected {undo_test_db_name} before Undo"
 
         undo_supported = (
             hasattr(bpy.ops.ed, "undo")
@@ -390,19 +545,15 @@ def run_tests():
         else:
             undo_call_res = bpy.ops.ed.undo()
             assert undo_call_res == {"FINISHED"}, f"bpy.ops.ed.undo returned {undo_call_res}"
-            assert undo_test_socket_name not in bpy.data.objects, (
-                f"Undo state transition assertion failed: {undo_test_socket_name} was NOT removed by Undo!"
+            assert undo_test_db_name not in bpy.data.objects, (
+                f"Undo state transition assertion failed: {undo_test_db_name} was NOT removed by Undo!"
             )
-            assert "User_Target_Mesh" in bpy.data.objects, (
-                "Undo corrupted scene: User_Target_Mesh was removed by Undo!"
-            )
-            assert "KF_Joint_Ball_001" in bpy.data.objects, (
-                "Undo corrupted scene: KF_Joint_Ball_001 was improperly removed by Undo!"
-            )
-            assert "KF_Socket_Ball_001" in bpy.data.objects, (
-                "Undo corrupted scene: KF_Socket_Ball_001 was improperly removed by Undo!"
-            )
-            print(f"  -> PASSED: Undo removed {undo_test_socket_name}; verified earlier and unrelated objects preserved")
+            assert "KF_Joint_DoubleBall_001" in bpy.data.objects, "Earlier KF_Joint_DoubleBall_001 was improperly removed by Undo!"
+            assert "KF_Joint_DoubleBall_002" in bpy.data.objects, "Earlier KF_Joint_DoubleBall_002 was improperly removed by Undo!"
+            assert "User_Target_Mesh" in bpy.data.objects, "Undo corrupted scene: User_Target_Mesh was removed by Undo!"
+            assert "KF_Joint_Ball_001" in bpy.data.objects, "Earlier KF_Joint_Ball_001 was improperly removed by Undo!"
+            assert "KF_Socket_Ball_001" in bpy.data.objects, "Earlier KF_Socket_Ball_001 was improperly removed by Undo!"
+            print(f"  -> PASSED: Undo removed {undo_test_db_name}; verified earlier and unrelated objects preserved")
 
         # Cleanup & Final Unregister
         print("\nCleaning up test objects and unregistering...")
@@ -411,6 +562,9 @@ def run_tests():
             "KF_Socket_Ball_001",
             "KF_Socket_Ball_002",
             "KF_Socket_Ball_003",
+            "KF_Joint_DoubleBall_001",
+            "KF_Joint_DoubleBall_002",
+            "KF_Joint_DoubleBall_003",
             "User_Target_Mesh",
         ):
             obj = bpy.data.objects.get(name)

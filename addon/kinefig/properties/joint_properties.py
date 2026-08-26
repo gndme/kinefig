@@ -48,3 +48,60 @@ class KineFigBallJointProperties(bpy.types.PropertyGroup):
         min=3,
         max=256,
     ) # type: ignore
+
+
+class KineFigDoubleBallJointProperties(bpy.types.PropertyGroup):
+    """Scene properties for creating parametric double ball (dumbbell) joints."""
+
+    ball_a_diameter_mm: bpy.props.FloatProperty(
+        name="Ball A Diameter (mm)",
+        description="Diameter of Ball A in millimeters (centered at origin)",
+        default=5.0,
+        min=0.1,
+        max=100.0,
+        precision=2,
+    )  # type: ignore
+
+    ball_b_diameter_mm: bpy.props.FloatProperty(
+        name="Ball B Diameter (mm)",
+        description="Diameter of Ball B in millimeters (centered at center distance along +Z)",
+        default=5.0,
+        min=0.1,
+        max=100.0,
+        precision=2,
+    )  # type: ignore
+
+    stem_diameter_mm: bpy.props.FloatProperty(
+        name="Stem Diameter (mm)",
+        description="Diameter of the connecting neck stem in millimeters (must be less than both balls)",
+        default=3.0,
+        min=0.1,
+        max=100.0,
+        precision=2,
+    )  # type: ignore
+
+    center_distance_mm: bpy.props.FloatProperty(
+        name="Center Distance (mm)",
+        description="Distance between Ball A center and Ball B center along local +Z axis",
+        default=8.0,
+        min=0.1,
+        max=200.0,
+        precision=2,
+    )  # type: ignore
+
+    segments: bpy.props.IntProperty(
+        name="Segments",
+        description="Radial resolution of spheres and stem cylinder",
+        default=32,
+        min=3,
+        max=256,
+    )  # type: ignore
+
+    rings: bpy.props.IntProperty(
+        name="Rings",
+        description="Vertical ring resolution of spheres",
+        default=16,
+        min=3,
+        max=256,
+    )  # type: ignore
+

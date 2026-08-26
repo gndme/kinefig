@@ -140,6 +140,35 @@ Check:
 
 ---
 
+### KF-UAT-JOINT-004 — Double Ball / Dumbbell Joint (PR-004)
+
+Goal:
+Create a parametric double-ball / dumbbell joint solid suitable for neck, wrist, and torso figure articulation experiments.
+
+Check:
+- Single coherent solid: Ball A + central stem + Ball B merged into a single watertight closed 2-manifold object with no internal intersecting faces;
+- Stem proportions: stem diameter is visually narrower than both balls (`stem_diameter < min(ball_a, ball_b)`);
+- Center distance verification:
+  - Default parameters (Ball A = 5.0mm, Ball B = 5.0mm, Stem = 3.0mm, Center Distance = 8.0mm);
+  - Total joint height along Z is 13.0mm (from -2.5mm to +10.5mm);
+  - Center of Ball A is at local `(0, 0, 0)`; center of Ball B is at `(0, 0, 8.0mm)`;
+- Asymmetric dumbbell verification:
+  - Set Ball A = 4.0mm, Ball B = 6.0mm, Stem = 2.5mm, Center Distance = 8.0mm;
+  - Ball A remains at origin side (bottom at -2.0mm); Ball B remains at +Z side (top at +11.0mm);
+  - Maximum joint width corresponds to Ball B (6.0mm);
+- Placement & Naming: creates at 3D Cursor location with canonical axis along +Z; sequential naming (`KF_Joint_DoubleBall_001`, `KF_Joint_DoubleBall_002`...);
+- Tweakability: values can be adjusted in the Operator Redo panel (F9) immediately after creation;
+- Slicing & print readiness: inspect mesh cross-section to confirm completely hollow interior with outer manifold shell.
+
+**Interactive Undo Verification (Mandatory 3D Specialist Step)**:
+1. In a scene with an unrelated reference model, click **Create Double Ball** (creates `KF_Joint_DoubleBall_001`).
+2. Press **Ctrl+Z** (or `Edit > Undo`).
+3. **Expected**:
+   - `KF_Joint_DoubleBall_001` cleanly disappears from 3D Viewport and Outliner;
+   - Reference objects and existing scene state remain completely intact;
+   - Zero temporary objects (`_KF_TMP_...`) or orphan mesh datablocks are left behind.
+
+
 ### KF-UAT-JOINT-002 — Double Ball
 Goal: Create a double-ball connector suitable for wrist/torso/neck experimentation.
 
