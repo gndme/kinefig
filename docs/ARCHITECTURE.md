@@ -70,6 +70,52 @@ Every generated joint carries only factual properties validated and computed at 
   - The operator catches the error, logs it, and returns `{"CANCELLED"}` with a user-facing error report.
 
 
+## Socket Cavity Geometry Policy & Socket Engine (PR-003)
+
+### Clearance Model
+- **Contract**: Clearance is defined strictly as **radial clearance** (applied uniformly between the mating male ball surface and the female cavity surface).
+- **Formulas**:
+  - `cavity_radius = ball_radius + clearance`
+  - `socket_diameter = ball_diameter + 2.0 * clearance`
+  - `ball_radius_mm = ball_diameter_mm / 2.0`
+  - `socket_radius_mm = ball_radius_mm + clearance_mm`
+
+### Socket Tool Geometry (Closed 2-Manifold Cutter)
+- The generated socket geometry represents the **negative cutter volume** intended for later subtraction into body meshes.
+- In accordance with KineFig's 3D printability and geometry robustness principles, the cutter volume is not an open, zero-thickness shell. Instead, it is a **watertight, closed 2-manifold solid** created by taking the cavity sphere and trimming it cleanly at the insertion plane `z = 0` via Blender's `EXACT` boolean difference solver.
+- The trimming operation generates a planar capping polygon at `z = 0` with zero non-manifold edges, zero boundary edges, and positive volume.
+
+### Depth Semantics & Validation Constraints
+- **Definition**: Socket depth is the distance from the insertion opening plane `z = 0` to the deepest internal cavity point along the socket axis `+Z`.
+- **Allowed Range**: `0.0 < socket_depth_mm < socket_diameter_mm`.
+  - At `socket_depth == socket_radius`: Hemisphere cavity (90° half-angle opening).
+  - At `socket_depth < socket_radius`: Shallow cavity (< 90°).
+  - At `socket_radius < socket_depth < socket_diameter`: Retaining cavity (> 90°, retaining neck for articulated snap-fit joints).
+  - Depths `>= socket_diameter` are strictly rejected as non-physical.
+
+### Coordinate & Insertion Axis Conventions
+- **Location**: Default at 3D Cursor.
+- **Local Origin**: `(0, 0, 0)` is positioned at the center of the planar opening face.
+- **Socket Axis (`kf_axis`)**: Points along **+Z** (`(0.0, 0.0, 1.0)`), extending from opening plane `z = 0` to deepest cavity point `z = socket_depth_m`.
+- **Insertion Direction (`kf_insertion_axis`)**: Vector **+Z** (`(0.0, 0.0, 1.0)`), representing the direction of male-part travel from outside through the opening into the cavity.
+- **Opening Normal (`kf_opening_normal`)**: Vector **-Z** (`(0.0, 0.0, -1.0)`), pointing outward from the opening plane away from the cavity.
+- **Deepest Cavity Point**: Located at `(0, 0, socket_depth_m)`.
+- **Sphere Center**: Located at `(0, 0, socket_depth_m - socket_radius_m)`.
+
+### Parametric Metadata Schema
+- `kf_type`: `"socket"`
+- `kf_socket_type`: `"ball"`
+- `kf_version`: KineFig version string
+- `kf_ball_diameter_mm`: Mating male ball diameter in mm (float)
+- `kf_clearance_mm`: Radial clearance in mm (float)
+- `kf_socket_diameter_mm`: Internal cavity diameter in mm (float)
+- `kf_socket_depth_mm`: Cavity depth in mm (float)
+- `kf_axis`: Socket cavity axis `(0.0, 0.0, 1.0)`
+- `kf_insertion_axis`: Male insertion travel direction `(0.0, 0.0, 1.0)`
+- `kf_opening_normal`: Outward normal of opening plane `(0.0, 0.0, -1.0)`
+- Uncomputed keys are strictly omitted.
+
+
 ## Diagnostic & Bug Reporting Architecture
 
 

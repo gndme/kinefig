@@ -19,22 +19,27 @@ Exit gate: **PASSED (Merged into main)**.
 
 ## Phase 1 — Joint Geometry Core
 
-### PR-002 — Ball Joint Geometry Core (IN PROGRESS)
-Build:
+### PR-002 — Ball Joint Geometry Core (COMPLETED)
+Delivered:
 - Parametric male ball joint geometry (sphere + cylindrical stem);
-- Watertight manifold mesh construction;
+- Watertight 2-manifold mesh construction via Exact Boolean Union;
 - Dedicated Joint UI panel in 3D Viewport sidebar;
-- Joint metadata schema (`kf_type="joint"`, `kf_joint_type="ball"`, dimensions);
+- Joint metadata schema (`kf_type="joint"`, `kf_joint_type="ball"`, dimensions, axis);
 - Deterministic sequential naming (`KF_Joint_Ball_001`, `KF_Joint_Ball_002`...);
-- Undo support and scene protection;
+- Undo support and transactional rollback on Boolean failure;
 - Real Blender packaged zip integration tests for geometry dimensions, manifoldness, and Undo.
 
-### PR-003 — Socket Engine Core
+Exit gate: **PASSED (Merged into main)**.
+
+### PR-003 — Socket Engine Core (IN PROGRESS)
 Build:
 - Parametric female socket cavity generator for ball joints;
-- Clearance offset subtraction volume;
-- Entry chamfer and retention cup;
-- Non-destructive socket placement helper.
+- Radial clearance offset contract (`socket_diameter = ball_diameter + 2 * clearance`);
+- Watertight, closed 2-manifold cutter volume trimmed cleanly at insertion plane `z = 0`;
+- Depth semantics: distance from opening plane to deepest cavity point (`0 < depth < diameter`);
+- Contextual UX operator `kinefig.use_selected_ball` to copy diameter from active male joint;
+- Transactional rollback on Boolean failure and factual metadata schema;
+- Real Blender packaged zip integration tests for dimensions, manifoldness, and clearance invariant.
 
 ### PR-004 — Double Ball Joint (Dumbbell)
 Build on Ball Joint and Socket primitives:

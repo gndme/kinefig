@@ -2,12 +2,18 @@
 
 from .units import MM_TO_M, mm_to_blender, blender_to_mm
 from .errors import KineFigError, KineFigValidationError, KineFigGeometryError
+from .clearance import (
+    compute_socket_diameter,
+    compute_socket_radius,
+    compute_opening_diameter,
+)
 from .validation import (
     require_positive,
     require_non_negative,
     require_in_range,
     require_integer_in_range,
     validate_ball_joint_parameters,
+    validate_ball_socket_parameters,
 )
 from .naming import (
     PREFIX_KINEFIG,
@@ -51,11 +57,15 @@ __all__ = [
     "KineFigError",
     "KineFigValidationError",
     "KineFigGeometryError",
+    "compute_socket_diameter",
+    "compute_socket_radius",
+    "compute_opening_diameter",
     "require_positive",
     "require_non_negative",
     "require_in_range",
     "require_integer_in_range",
     "validate_ball_joint_parameters",
+    "validate_ball_socket_parameters",
     "PREFIX_KINEFIG",
     "PREFIX_TEMP",
     "format_object_name",

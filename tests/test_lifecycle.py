@@ -86,6 +86,20 @@ def test_ball_joint_operator_poll():
     assert KINEFIG_OT_create_ball_joint.poll(context_edit_mode) is False
 
 
+def test_ball_socket_operator_poll():
+    """Verify ball socket operator poll allows execution only in Object Mode."""
+    from addon.kinefig.operators.sockets import KINEFIG_OT_create_ball_socket
+
+    context_obj_mode = MagicMock()
+    context_obj_mode.mode = "OBJECT"
+    assert KINEFIG_OT_create_ball_socket.poll(context_obj_mode) is True
+
+    context_edit_mode = MagicMock()
+    context_edit_mode.mode = "EDIT_MESH"
+    assert KINEFIG_OT_create_ball_socket.poll(context_edit_mode) is False
+
+
+
 def test_smoke_operator_execution_and_repeated_naming():
     """Verify smoke operator creates 10mm sphere with deterministic sequential naming."""
     op = KINEFIG_OT_create_smoke_object()
@@ -181,7 +195,158 @@ def test_ball_joint_operator_geometry_failure():
         op.report.assert_called_once()
         assert "ERROR" in op.report.call_args[0][0]
         assert "Geometry error" in str(op.report.call_args[0][1])
+def test_ball_socket_operator_execution_and_metadata():
+    """Verify ball socket operator creates socket with correct naming and metadata."""
+    from addon.kinefig.operators.sockets import KINEFIG_OT_create_ball_socket
 
+    op = KINEFIG_OT_create_ball_socket()
+    op.report = MagicMock()
+    op.ball_diameter_mm = 5.0
+    op.clearance_mm = 0.15
+    op.socket_depth_mm = 3.5
+    op.segments = 32
+    op.rings = 16
+
+    context = MagicMock()
+    context.scene.cursor.location = (0.0, 0.0, 0.0)
+    context.collection = MagicMock()
+
+    result = op.execute(context)
+    assert result == {"FINISHED"}
+    assert op.report.called
+
+    created_names = [o.name for o in bpy.data.objects]
+    assert "KF_Socket_Ball_001" in created_names
+
+
+def test_ball_socket_operator_validation_failure():
+    """Verify socket operator returns CANCELLED on invalid depth >= diameter."""
+    from addon.kinefig.operators.sockets import KINEFIG_OT_create_ball_socket
+
+    op = KINEFIG_OT_create_ball_socket()
+    op.report = MagicMock()
+    op.ball_diameter_mm = 5.0
+    op.clearance_mm = 0.15
+    op.socket_depth_mm = 6.0  # Invalid: depth >= diameter (5.30mm)
+
+    context = MagicMock()
+    result = op.execute(context)
+    assert result == {"CANCELLED"}
+    op.report.assert_called_once()
+    assert "ERROR" in op.report.call_args[0][0]
+
+
+def test_ball_socket_operator_geometry_failure():
+    """Verify socket operator returns CANCELLED when geometry creation raises KineFigGeometryError."""
+    from unittest.mock import patch
+    from addon.kinefig.operators.sockets import KINEFIG_OT_create_ball_socket
+    from addon.kinefig.core.errors import KineFigGeometryError
+
+    op = KINEFIG_OT_create_ball_socket()
+    op.report = MagicMock()
+    op.ball_diameter_mm = 5.0
+    op.clearance_mm = 0.15
+    op.socket_depth_mm = 3.5
+    op.segments = 32
+    op.rings = 16
+
+    context = MagicMock()
+    with patch(
+        "addon.kinefig.operators.sockets.create_ball_socket_geometry",
+        side_effect=KineFigGeometryError("Simulated boolean trimming engine failure"),
+    ):
+        result = op.execute(context)
+        assert result == {"CANCELLED"}
+        op.report.assert_called_once()
+        assert "ERROR" in op.report.call_args[0][0]
+        assert "Geometry error" in str(op.report.call_args[0][1])
+
+
+def test_use_selected_ball_operator():
+    """Verify use_selected_ball copies ball diameter from active ball joint."""
+    from addon.kinefig.operators.sockets import KINEFIG_OT_use_selected_ball
+
+    op = KINEFIG_OT_use_selected_ball()
+    op.report = MagicMock()
+
+    # Context without valid ball joint -> poll is False
+    ctx_invalid = MagicMock()
+    ctx_invalid.active_object = None
+    assert not KINEFIG_OT_use_selected_ball.poll(ctx_invalid)
+
+    unrelated = MagicMock()
+    unrelated.get.return_value = None
+    ctx_invalid.active_object = unrelated
+    assert not KINEFIG_OT_use_selected_ball.poll(ctx_invalid)
+
+    # Context with valid ball joint -> poll is True and execute copies value
+    ball_obj = MagicMock()
+    ball_props = {
+        "kf_type": "joint",
+        "kf_joint_type": "ball",
+        "kf_ball_diameter_mm": 6.5,
+    }
+    ball_obj.name = "KF_Joint_Ball_001"
+    ball_obj.get.side_effect = lambda k, d=None: ball_props.get(k, d)
+    ball_obj.__contains__ = lambda self, k: k in ball_props
+
+    ctx_valid = MagicMock()
+    ctx_valid.active_object = ball_obj
+    ctx_valid.scene.kinefig_ball_socket.ball_diameter_mm = 5.0
+
+    assert KINEFIG_OT_use_selected_ball.poll(ctx_valid)
+
+    res = op.execute(ctx_valid)
+    assert res == {"FINISHED"}
+    assert ctx_valid.scene.kinefig_ball_socket.ball_diameter_mm == 6.5
+    op.report.assert_called_once()
+    assert "INFO" in op.report.call_args[0][0]
+
+
+import pytest
+
+
+@pytest.mark.parametrize(
+    "invalid_val",
+    [
+        0,
+        0.0,
+        -1,
+        -5.0,
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        "abc",
+        None,
+    ],
+)
+def test_use_selected_ball_invalid_metadata_rejected(invalid_val):
+    """Verify operator returns CANCELLED and does NOT mutate scene settings for invalid metadata."""
+    from addon.kinefig.operators.sockets import KINEFIG_OT_use_selected_ball
+
+    op = KINEFIG_OT_use_selected_ball()
+    op.report = MagicMock()
+
+    ball_obj = MagicMock()
+    ball_props = {
+        "kf_type": "joint",
+        "kf_joint_type": "ball",
+        "kf_ball_diameter_mm": invalid_val,
+    }
+    ball_obj.name = "KF_Joint_Ball_Corrupted"
+    ball_obj.get.side_effect = lambda k, d=None: ball_props.get(k, d)
+    ball_obj.__contains__ = lambda self, k: k in ball_props
+
+    ctx = MagicMock()
+    ctx.active_object = ball_obj
+    initial_setting = 5.0
+    ctx.scene.kinefig_ball_socket.ball_diameter_mm = initial_setting
+
+    res = op.execute(ctx)
+    assert res == {"CANCELLED"}
+    assert ctx.scene.kinefig_ball_socket.ball_diameter_mm == initial_setting
+    op.report.assert_called_once()
+    assert "WARNING" in op.report.call_args[0][0] or "ERROR" in op.report.call_args[0][0]
 
 
 def test_copy_debug_info_operator():

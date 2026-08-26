@@ -113,3 +113,34 @@ def validate_ball_joint_parameters(
 
     require_integer_in_range(segments, 3, 256, "segments")
     require_integer_in_range(rings, 3, 256, "rings")
+
+
+def validate_ball_socket_parameters(
+    ball_diameter_mm: Numeric,
+    clearance_mm: Numeric,
+    socket_depth_mm: Numeric,
+    segments: int = 32,
+    rings: int = 16,
+) -> None:
+    """Validate parametric inputs for a female ball socket cavity.
+
+    Enforces:
+    - ball_diameter_mm > 0 and finite
+    - clearance_mm >= 0 and finite (radial clearance)
+    - socket_depth_mm > 0 and finite
+    - socket_depth_mm < socket_diameter_mm (depth cannot exceed cavity diameter)
+    - segments and rings strictly in valid integer bounds [3, 256]
+    """
+    ball_d = require_positive(ball_diameter_mm, "ball_diameter_mm")
+    clr = require_non_negative(clearance_mm, "clearance_mm")
+    depth = require_positive(socket_depth_mm, "socket_depth_mm")
+
+    socket_d = ball_d + 2.0 * clr
+    if depth >= socket_d:
+        raise KineFigValidationError(
+            f"Socket depth ({depth:.2f} mm) must be less than internal socket diameter ({socket_d:.2f} mm)"
+        )
+
+    require_integer_in_range(segments, 3, 256, "segments")
+    require_integer_in_range(rings, 3, 256, "rings")
+

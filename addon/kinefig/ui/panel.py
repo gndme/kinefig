@@ -2,6 +2,7 @@
 
 import bpy
 from ..core.build_info import VERSION, get_short_sha
+from ..core.clearance import compute_socket_diameter
 
 
 class KINEFIG_PT_main(bpy.types.Panel):
@@ -16,6 +17,7 @@ class KINEFIG_PT_main(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         scene = context.scene
+        active_obj = getattr(context, "active_object", None)
 
         # 1. Version and Build Badge (Required for UAT bug traceability)
         header_box = layout.box()
@@ -24,7 +26,8 @@ class KINEFIG_PT_main(bpy.types.Panel):
         sub_row.scale_y = 0.8
         sub_row.label(text=f"Build: {get_short_sha()}", icon="FILE_TEXT")
 
-        # 2. JOINT Category — Parametric Ball Joint
+        # 2. JOINT Category
+        # 2A. Male Ball Joint (PR-002)
         joint_box = layout.box()
         joint_box.label(text="JOINT: Male Ball Joint", icon="MESH_UVSPHERE")
 
@@ -46,10 +49,57 @@ class KINEFIG_PT_main(bpy.types.Panel):
             op.segments = props.segments
             op.rings = props.rings
         else:
-            # Fallback if properties not yet registered on scene
             joint_box.operator(
                 "kinefig.create_ball_joint",
                 text="Create Ball Joint",
+                icon="ADD",
+            )
+
+        # 2B. Female Ball Socket Cavity (PR-003)
+        socket_box = layout.box()
+        socket_box.label(text="JOINT: Ball Socket Cavity", icon="MOD_MESHDEFORM")
+
+        # Contextual UX link: if active object is a KineFig Ball Joint, offer button to copy diameter
+        if (
+            active_obj
+            and active_obj.get("kf_type") == "joint"
+            and active_obj.get("kf_joint_type") == "ball"
+            and "kf_ball_diameter_mm" in active_obj
+        ):
+            link_row = socket_box.row()
+            link_row.operator(
+                "kinefig.use_selected_ball",
+                text=f"Match Selected Ball ({active_obj.get('kf_ball_diameter_mm'):.1f}mm)",
+                icon="EYEDROPPER",
+            )
+
+        if hasattr(scene, "kinefig_ball_socket"):
+            sprops = scene.kinefig_ball_socket
+            scol = socket_box.column(align=True)
+            scol.prop(sprops, "ball_diameter_mm", text="Ball Diameter")
+            scol.prop(sprops, "clearance_mm", text="Clearance")
+            scol.prop(sprops, "socket_depth_mm", text="Socket Depth")
+
+            # Computed nominal socket cavity diameter readout
+            computed_d = compute_socket_diameter(sprops.ball_diameter_mm, sprops.clearance_mm)
+            readout = socket_box.row()
+            readout.scale_y = 0.8
+            readout.label(text=f"Cavity Dia: {computed_d:.2f} mm (radial clr: {sprops.clearance_mm:.2f}mm)", icon="INFO")
+
+            sop = socket_box.operator(
+                "kinefig.create_ball_socket",
+                text="Create Ball Socket",
+                icon="ADD",
+            )
+            sop.ball_diameter_mm = sprops.ball_diameter_mm
+            sop.clearance_mm = sprops.clearance_mm
+            sop.socket_depth_mm = sprops.socket_depth_mm
+            sop.segments = sprops.segments
+            sop.rings = sprops.rings
+        else:
+            socket_box.operator(
+                "kinefig.create_ball_socket",
+                text="Create Ball Socket",
                 icon="ADD",
             )
 

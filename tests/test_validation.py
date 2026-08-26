@@ -197,3 +197,85 @@ def test_validate_ball_joint_parameters_invalid_tessellation(bad_seg, bad_ring):
     """Verify validate_ball_joint_parameters rejects out-of-range, non-int segments/rings."""
     with pytest.raises(KineFigValidationError):
         validate_ball_joint_parameters(5.0, 3.0, 5.0, segments=bad_seg, rings=bad_ring)
+
+
+# ==============================================================================
+# Ball Socket Parameter Validation Tests
+# ==============================================================================
+
+from addon.kinefig.core.validation import validate_ball_socket_parameters
+
+
+def test_validate_ball_socket_parameters_valid():
+    """Verify validate_ball_socket_parameters accepts standard valid dimensions."""
+    validate_ball_socket_parameters(
+        ball_diameter_mm=5.0,
+        clearance_mm=0.15,
+        socket_depth_mm=3.5,
+        segments=32,
+        rings=16,
+    )
+
+
+def test_validate_ball_socket_parameters_zero_clearance_valid():
+    """Verify zero radial clearance is valid (line-to-line nominal fit)."""
+    validate_ball_socket_parameters(
+        ball_diameter_mm=5.0,
+        clearance_mm=0.0,
+        socket_depth_mm=2.5,
+    )
+
+
+@pytest.mark.parametrize(
+    "bad_ball, bad_clr, bad_depth",
+    [
+        (0.0, 0.15, 3.5),
+        (-5.0, 0.15, 3.5),
+        (float("nan"), 0.15, 3.5),
+        (float("inf"), 0.15, 3.5),
+        (5.0, -0.01, 3.5),
+        (5.0, -1.0, 3.5),
+        (5.0, float("nan"), 3.5),
+        (5.0, float("inf"), 3.5),
+        (5.0, 0.15, 0.0),
+        (5.0, 0.15, -1.0),
+        (5.0, 0.15, float("nan")),
+        (5.0, 0.15, float("inf")),
+    ],
+)
+def test_validate_ball_socket_parameters_non_positive_or_non_finite(bad_ball, bad_clr, bad_depth):
+    """Verify validate_ball_socket_parameters rejects invalid or non-finite dimensions."""
+    with pytest.raises(KineFigValidationError):
+        validate_ball_socket_parameters(bad_ball, bad_clr, bad_depth)
+
+
+def test_validate_ball_socket_parameters_depth_ge_diameter():
+    """Verify validate_ball_socket_parameters rejects depth >= cavity diameter."""
+    # ball 5.0, clearance 0.15 -> cavity diameter = 5.30 mm
+    with pytest.raises(KineFigValidationError, match="must be less than internal socket diameter"):
+        validate_ball_socket_parameters(5.0, 0.15, 5.30)
+
+    with pytest.raises(KineFigValidationError, match="must be less than internal socket diameter"):
+        validate_ball_socket_parameters(5.0, 0.15, 6.0)
+
+
+@pytest.mark.parametrize(
+    "bad_seg, bad_ring",
+    [
+        (2, 16),
+        (32, 2),
+        (0, 16),
+        (32, -1),
+        (500, 16),
+        (31.7, 16),
+        (32, 15.9),
+        (32.0, 16),
+        (True, 16),
+        ("32", 16),
+    ],
+)
+def test_validate_ball_socket_parameters_invalid_tessellation(bad_seg, bad_ring):
+    """Verify validate_ball_socket_parameters rejects out-of-range, non-int segments/rings."""
+    with pytest.raises(KineFigValidationError):
+        validate_ball_socket_parameters(5.0, 0.15, 3.5, segments=bad_seg, rings=bad_ring)
+

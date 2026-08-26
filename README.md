@@ -64,7 +64,11 @@ blender --background --factory-startup --python tests/test_blender_runtime.py
 
 ## Status
 
-**PR-002 Ball Joint Geometry Core (In Progress)**:
-- Implements parametric male ball joint geometry with mm precision and exact watertight 2-manifold Boolean Union.
-- Sidebar N-panel provides interactive controls for Ball Diameter, Stem Diameter, and Stem Length.
-- *Known Limitation*: PR-002 provides the male ball joint core. The matching female socket engine will be introduced in PR-003.
+- **PR-001 Foundation Skeleton**: Merged to `main`.
+- **PR-002 Parametric Male Ball Joint**: Merged to `main`.
+- **PR-003 Parametric Female Ball Socket Cavity Core (In Progress)**:
+  - Implements parametric female ball socket cavity tool geometry with radial clearance contract (`socket_diameter = ball_diameter + 2 * clearance`).
+  - Watertight, closed 2-manifold cutter volume trimmed cleanly at insertion plane `z = 0`.
+  - Contextual UI operator `Match Selected Ball` to copy diameter directly from active male joint.
+  - *Known Limitation*: PR-003 provides the negative/cutter socket cavity tool geometry. Automatic Boolean subtraction into arbitrary figure body meshes belongs to future socket seating workflows.
+
