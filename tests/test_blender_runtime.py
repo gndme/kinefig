@@ -39,12 +39,19 @@ def run_tests():
     # 1. Test clean registration and unregistration
     print("[1/6] Testing register() & unregister()...")
     kinefig.register()
-    assert hasattr(bpy.ops, "kinefig"), "bpy.ops.kinefig missing after register()"
-    assert hasattr(bpy.ops.kinefig, "create_smoke_object"), "create_smoke_object operator missing"
+    assert hasattr(bpy.types, "KINEFIG_OT_create_smoke_object"), (
+        "KINEFIG_OT_create_smoke_object missing from bpy.types after register()"
+    )
+    assert hasattr(bpy.types, "KINEFIG_PT_main"), (
+        "KINEFIG_PT_main missing from bpy.types after register()"
+    )
 
     kinefig.unregister()
-    assert not hasattr(bpy.ops, "kinefig") or not hasattr(bpy.ops.kinefig, "create_smoke_object"), (
-        "create_smoke_object still present after unregister()"
+    assert not hasattr(bpy.types, "KINEFIG_OT_create_smoke_object"), (
+        "KINEFIG_OT_create_smoke_object still present in bpy.types after unregister()"
+    )
+    assert not hasattr(bpy.types, "KINEFIG_PT_main"), (
+        "KINEFIG_PT_main still present in bpy.types after unregister()"
     )
 
     # Re-register for functional tests
@@ -98,7 +105,6 @@ def run_tests():
     print("[5/6] Testing Undo behavior...")
     try:
         if hasattr(bpy.ops.ed, "undo"):
-            # Background mode might not have an active window context, but operator poll should not crash
             if bpy.ops.ed.undo.poll():
                 bpy.ops.ed.undo()
                 print("  -> PASSED: Undo triggered successfully via bpy.ops.ed.undo()")
