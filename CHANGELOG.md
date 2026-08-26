@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased (PR-003 Parametric Female Ball Socket Cavity Core)
+## Unreleased (PR-005 Parametric Peg + Socket Core)
+- Parametric male cylindrical Peg generator (`geometry/joints.py`): creates watertight 2-manifold closed cylinder or conical frustum (with optional draft/taper angle) with mm precision.
+- Parametric female Peg Socket receiver cavity generator (`geometry/sockets.py`): creates closed watertight 2-manifold cylinder cutter volume with explicit uniform radial clearance.
+- Direct BMesh primitive construction (`bmesh.ops.create_cone` with `cap_ends=True`): 100% analytical watertight 2-manifold solids without Booleans, avoiding boolean solver failures or non-manifold artifacts.
+- Explicit radial clearance contract (`compute_socket_diameter`): `socket_diameter = peg_diameter + 2 * radial_clearance`.
+- Parameter validation (`validate_peg_parameters`, `validate_peg_socket_parameters`): enforces positive finite dimensions, draft angle limits (`0 <= taper < collapse angle`), and strict integer tessellation in [3, 256].
+- Operators `kinefig.create_peg_joint`, `kinefig.create_peg_socket`, and contextual `kinefig.use_selected_peg` (reads peg diameter from active peg joint into socket settings).
+- Sidebar N-panel UI: dedicated Male Peg Joint and Peg Socket Receiver cards with diameter, length, taper, radial clearance, and live cavity diameter readout.
+- Transactional rollback on failure: cleans all created objects and meshes on any failure, preserving scene safety.
+- Complete unit tests (`tests/test_peg.py`, `tests/test_validation.py`) and real Blender 4.2 packaged zip runtime integration tests (`tests/test_blender_runtime.py`).
+
+## 0.0.3 (PR-003 Parametric Female Ball Socket Cavity Core)
 - Parametric female Ball Socket cavity generator (`geometry/sockets.py`): creates watertight, closed 2-manifold cutter volume representing negative cavity space with mm precision.
 - Centralized clearance mathematics (`core/clearance.py`): strictly enforces radial clearance contract (`socket_diameter = ball_diameter + 2 * clearance`).
 - Parameter validation (`validate_ball_socket_parameters`): validates positive ball diameter, non-negative radial clearance, depth `< socket_diameter`, and strict integer tessellation.

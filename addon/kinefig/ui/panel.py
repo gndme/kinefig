@@ -103,6 +103,83 @@ class KINEFIG_PT_main(bpy.types.Panel):
                 icon="ADD",
             )
 
+        # 2C. Male Peg Joint (PR-005)
+        peg_box = layout.box()
+        peg_box.label(text="JOINT: Male Peg Joint", icon="MESH_CYLINDER")
+
+        if hasattr(scene, "kinefig_peg_joint"):
+            peg_props = scene.kinefig_peg_joint
+            peg_col = peg_box.column(align=True)
+            peg_col.prop(peg_props, "peg_diameter_mm", text="Peg Dia")
+            peg_col.prop(peg_props, "peg_length_mm", text="Peg Length")
+            peg_col.prop(peg_props, "taper_angle_deg", text="Taper Angle")
+
+            pop = peg_box.operator(
+                "kinefig.create_peg_joint",
+                text="Create Peg Joint",
+                icon="ADD",
+            )
+            pop.peg_diameter_mm = peg_props.peg_diameter_mm
+            pop.peg_length_mm = peg_props.peg_length_mm
+            pop.taper_angle_deg = peg_props.taper_angle_deg
+            pop.segments = peg_props.segments
+        else:
+            peg_box.operator(
+                "kinefig.create_peg_joint",
+                text="Create Peg Joint",
+                icon="ADD",
+            )
+
+        # 2D. Female Peg Socket Receiver (PR-005)
+        psocket_box = layout.box()
+        psocket_box.label(text="JOINT: Peg Socket Receiver", icon="SNAP_FACE")
+
+        # Contextual UX link: if active object is a KineFig Peg Joint, offer button to copy diameter
+        if (
+            active_obj
+            and active_obj.get("kf_type") == "joint"
+            and active_obj.get("kf_joint_type") == "peg"
+            and "kf_peg_diameter_mm" in active_obj
+        ):
+            link_row = psocket_box.row()
+            link_row.operator(
+                "kinefig.use_selected_peg",
+                text=f"Match Selected Peg ({active_obj.get('kf_peg_diameter_mm'):.1f}mm)",
+                icon="EYEDROPPER",
+            )
+
+        if hasattr(scene, "kinefig_peg_socket"):
+            psprops = scene.kinefig_peg_socket
+            pscol = psocket_box.column(align=True)
+            pscol.prop(psprops, "peg_diameter_mm", text="Peg Dia")
+            pscol.prop(psprops, "radial_clearance_mm", text="Clearance")
+            pscol.prop(psprops, "socket_depth_mm", text="Socket Depth")
+
+            # Computed nominal socket cavity diameter readout
+            computed_peg_d = compute_socket_diameter(psprops.peg_diameter_mm, psprops.radial_clearance_mm)
+            preadout = psocket_box.row()
+            preadout.scale_y = 0.8
+            preadout.label(
+                text=f"Cavity Dia: {computed_peg_d:.2f} mm (radial clr: {psprops.radial_clearance_mm:.2f}mm)",
+                icon="INFO",
+            )
+
+            psop = psocket_box.operator(
+                "kinefig.create_peg_socket",
+                text="Create Peg Socket",
+                icon="ADD",
+            )
+            psop.peg_diameter_mm = psprops.peg_diameter_mm
+            psop.radial_clearance_mm = psprops.radial_clearance_mm
+            psop.socket_depth_mm = psprops.socket_depth_mm
+            psop.segments = psprops.segments
+        else:
+            psocket_box.operator(
+                "kinefig.create_peg_socket",
+                text="Create Peg Socket",
+                icon="ADD",
+            )
+
         # 3. Help & Diagnostics (UAT Bug Reporting System)
         diag_box = layout.box()
         diag_box.label(text="Help & Diagnostics:", icon="HELP")

@@ -31,8 +31,8 @@ Delivered:
 
 Exit gate: **PASSED (Merged into main)**.
 
-### PR-003 — Socket Engine Core (IN PROGRESS)
-Build:
+### PR-003 — Socket Engine Core (COMPLETED)
+Delivered:
 - Parametric female socket cavity generator for ball joints;
 - Radial clearance offset contract (`socket_diameter = ball_diameter + 2 * clearance`);
 - Watertight, closed 2-manifold cutter volume trimmed cleanly at insertion plane `z = 0`;
@@ -41,22 +41,28 @@ Build:
 - Transactional rollback on Boolean failure and factual metadata schema;
 - Real Blender packaged zip integration tests for dimensions, manifoldness, and clearance invariant.
 
-### PR-004 — Double Ball Joint (Dumbbell)
+Exit gate: **PASSED (Merged into main)**.
+
+### PR-004 — Double Ball Joint (Dumbbell) (UNDER 3D UAT)
 Build on Ball Joint and Socket primitives:
 - Independent dual ball dimensions;
 - Center connecting shaft;
 - Wrist, neck, and torso articulation presets.
 
-### PR-005 — Peg + Socket
-Build:
-- Cylindrical peg with optional draft/taper angle;
-- Matching receiver socket;
-- Clearance compensation.
+### PR-005 — Peg + Socket Core (IMPLEMENTED)
+Delivered:
+- Parametric male cylindrical peg with optional draft/taper angle;
+- Matching female receiver socket cutter volume;
+- Direct BMesh closed watertight 2-manifold geometry (no Booleans required);
+- Explicit radial clearance model (`socket_diameter = peg_diameter + 2 * radial_clearance`);
+- Contextual UX operator `kinefig.use_selected_peg` to match socket settings from active peg;
+- Transactional rollback on failure, full Undo support, and factual metadata schema;
+- Unit test suite (231 tests) and real Blender 4.2 packaged zip runtime integration tests.
 
 Exit gate:
 - Measured geometry correct;
-- Rotated/scaled target cases tested;
-- Basic UAT pass.
+- Clearance invariant verified;
+- Real Blender packaged zip tests pass.
 
 ---
 

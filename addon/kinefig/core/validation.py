@@ -144,3 +144,57 @@ def validate_ball_socket_parameters(
     require_integer_in_range(segments, 3, 256, "segments")
     require_integer_in_range(rings, 3, 256, "rings")
 
+
+def validate_peg_parameters(
+    peg_diameter_mm: Numeric,
+    peg_length_mm: Numeric,
+    taper_angle_deg: Numeric = 0.0,
+    segments: int = 32,
+) -> None:
+    """Validate parametric inputs for a male cylindrical peg connector.
+
+    Enforces:
+    - peg_diameter_mm > 0 and finite
+    - peg_length_mm > 0 and finite
+    - taper_angle_deg >= 0 and finite
+    - taper resulting tip diameter > 0 (tip diameter = base_d - 2 * length * tan(radians(taper_angle_deg)))
+    - segments strictly in valid integer bounds [3, 256]
+    """
+    peg_d = require_positive(peg_diameter_mm, "peg_diameter_mm")
+    length = require_positive(peg_length_mm, "peg_length_mm")
+    taper = require_non_negative(taper_angle_deg, "taper_angle_deg")
+    require_integer_in_range(segments, 3, 256, "segments")
+
+    # If taper angle > 0, calculate resulting tip diameter
+    if taper > 0.0:
+        if taper >= 90.0:
+            raise KineFigValidationError(f"Taper angle ({taper}°) must be less than 90°")
+        taper_rad = math.radians(taper)
+        tip_r = (peg_d / 2.0) - length * math.tan(taper_rad)
+        if tip_r <= 0.0:
+            max_angle = math.degrees(math.atan((peg_d / 2.0) / length))
+            raise KineFigValidationError(
+                f"Taper angle ({taper:.1f}°) causes peg tip to invert or collapse (max valid angle: {max_angle:.1f}°)"
+            )
+
+
+def validate_peg_socket_parameters(
+    peg_diameter_mm: Numeric,
+    radial_clearance_mm: Numeric,
+    socket_depth_mm: Numeric,
+    segments: int = 32,
+) -> None:
+    """Validate parametric inputs for a female peg receiver socket cavity.
+
+    Enforces:
+    - peg_diameter_mm > 0 and finite
+    - radial_clearance_mm >= 0 and finite
+    - socket_depth_mm > 0 and finite
+    - segments strictly in valid integer bounds [3, 256]
+    """
+    require_positive(peg_diameter_mm, "peg_diameter_mm")
+    require_non_negative(radial_clearance_mm, "radial_clearance_mm")
+    require_positive(socket_depth_mm, "socket_depth_mm")
+    require_integer_in_range(segments, 3, 256, "segments")
+
+

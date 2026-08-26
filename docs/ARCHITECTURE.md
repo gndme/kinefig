@@ -116,6 +116,49 @@ Every generated joint carries only factual properties validated and computed at 
 - Uncomputed keys are strictly omitted.
 
 
+## Peg & Peg Socket Geometry Policy (PR-005)
+
+### Male Peg Geometry
+- **Form**: Watertight, closed 2-manifold cylinder (or truncated cone / conical frustum if `taper_angle_deg > 0`).
+- **Construction**: Created directly via BMesh primitive generator (`bmesh.ops.create_cone` with `cap_ends=True`), translated so base is at `z = 0` and tip at `z = +peg_length_m`.
+- **No Boolean Operations**: Constructed directly as an analytical manifold solid without Boolean operations, eliminating Boolean solver failures, coplanar edge issues, and non-manifold artifacts.
+- **Local Origin**: `(0, 0, 0)` at center of base plane `z = 0`.
+- **Canonical Axis (`kf_axis`)**: `(0.0, 0.0, 1.0)` along cylinder height from base to tip.
+- **Taper Math**:
+  - `tip_radius = base_radius - peg_length * tan(radians(taper_angle_deg))`
+  - Validated to ensure `tip_radius > 0` and `0 <= taper_angle_deg < 90`.
+- **Factual Metadata**:
+  - `kf_type`: `"joint"`
+  - `kf_joint_type`: `"peg"`
+  - `kf_version`: KineFig version string
+  - `kf_peg_diameter_mm`: Base peg diameter in mm (float)
+  - `kf_peg_length_mm`: Peg length in mm (float)
+  - `kf_taper_angle_deg`: Draft/taper angle in degrees (float)
+  - `kf_axis`: `(0.0, 0.0, 1.0)`
+
+### Female Peg Socket Receiver Cavity
+- **Form**: Watertight, closed 2-manifold cylinder representing negative receiver cavity.
+- **Clearance Contract**:
+  - `socket_diameter_mm = peg_diameter_mm + 2 * radial_clearance_mm`
+- **Construction**: Created directly via BMesh (`bmesh.ops.create_cone` with `cap_ends=True`, `radius1 = radius2 = socket_radius_m`), translated so opening plane is at `z = 0` and closed bottom at `z = +socket_depth_m`.
+- **Local Origin**: `(0, 0, 0)` at center of circular opening face.
+- **Coordinate Conventions**:
+  - `kf_axis`: `(0.0, 0.0, 1.0)` pointing along cavity depth.
+  - `kf_insertion_axis`: `(0.0, 0.0, 1.0)` (direction male peg travels from outside into cavity).
+  - `kf_opening_normal`: `(0.0, 0.0, -1.0)` (pointing outward from opening plane).
+- **Factual Metadata**:
+  - `kf_type`: `"socket"`
+  - `kf_socket_type`: `"peg"`
+  - `kf_version`: KineFig version string
+  - `kf_peg_diameter_mm`: Mating male peg diameter in mm (float)
+  - `kf_radial_clearance_mm`: Radial clearance in mm (float)
+  - `kf_socket_diameter_mm`: Cavity internal diameter in mm (float)
+  - `kf_socket_depth_mm`: Cavity depth in mm (float)
+  - `kf_axis`: `(0.0, 0.0, 1.0)`
+  - `kf_insertion_axis`: `(0.0, 0.0, 1.0)`
+  - `kf_opening_normal`: `(0.0, 0.0, -1.0)`
+
+
 ## Diagnostic & Bug Reporting Architecture
 
 

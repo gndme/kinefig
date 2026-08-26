@@ -10,11 +10,16 @@ bl_info = {
 
 import bpy
 
-from .properties.joint_properties import KineFigBallJointProperties
-from .properties.socket_properties import KineFigBallSocketProperties
+from .properties.joint_properties import KineFigBallJointProperties, KineFigPegJointProperties
+from .properties.socket_properties import KineFigBallSocketProperties, KineFigPegSocketProperties
 from .operators.smoke import KINEFIG_OT_create_smoke_object
-from .operators.joints import KINEFIG_OT_create_ball_joint
-from .operators.sockets import KINEFIG_OT_create_ball_socket, KINEFIG_OT_use_selected_ball
+from .operators.joints import KINEFIG_OT_create_ball_joint, KINEFIG_OT_create_peg_joint
+from .operators.sockets import (
+    KINEFIG_OT_create_ball_socket,
+    KINEFIG_OT_use_selected_ball,
+    KINEFIG_OT_create_peg_socket,
+    KINEFIG_OT_use_selected_peg,
+)
 from .operators.diagnostics import (
     KINEFIG_OT_copy_debug_info,
     KINEFIG_OT_export_diagnostic_report,
@@ -24,11 +29,16 @@ from .ui.panel import KINEFIG_PT_main
 
 _CLASSES = (
     KineFigBallJointProperties,
+    KineFigPegJointProperties,
     KineFigBallSocketProperties,
+    KineFigPegSocketProperties,
     KINEFIG_OT_create_smoke_object,
     KINEFIG_OT_create_ball_joint,
+    KINEFIG_OT_create_peg_joint,
     KINEFIG_OT_create_ball_socket,
     KINEFIG_OT_use_selected_ball,
+    KINEFIG_OT_create_peg_socket,
+    KINEFIG_OT_use_selected_peg,
     KINEFIG_OT_copy_debug_info,
     KINEFIG_OT_export_diagnostic_report,
     KINEFIG_OT_report_bug,
@@ -45,9 +55,19 @@ def register():
     bpy.types.Scene.kinefig_ball_socket = bpy.props.PointerProperty(
         type=KineFigBallSocketProperties
     )
+    bpy.types.Scene.kinefig_peg_joint = bpy.props.PointerProperty(
+        type=KineFigPegJointProperties
+    )
+    bpy.types.Scene.kinefig_peg_socket = bpy.props.PointerProperty(
+        type=KineFigPegSocketProperties
+    )
 
 
 def unregister():
+    if hasattr(bpy.types.Scene, "kinefig_peg_socket"):
+        del bpy.types.Scene.kinefig_peg_socket
+    if hasattr(bpy.types.Scene, "kinefig_peg_joint"):
+        del bpy.types.Scene.kinefig_peg_joint
     if hasattr(bpy.types.Scene, "kinefig_ball_socket"):
         del bpy.types.Scene.kinefig_ball_socket
     if hasattr(bpy.types.Scene, "kinefig_ball_joint"):

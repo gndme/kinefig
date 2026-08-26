@@ -140,6 +140,41 @@ Check:
 
 ---
 
+### KF-UAT-JOINT-005 — Parametric Peg + Socket Core (PR-005)
+
+Goal:
+Create a parametric cylindrical male peg and matching female receiver socket cutter with explicit radial clearance for figure limbs, swivels, interchangeable hands, or accessories.
+
+Check:
+- **Male Peg Geometry**:
+  - Watertight 2-manifold closed cylinder or conical frustum (if taper angle > 0);
+  - Aligned along canonical local +Z: base plane at `z = 0`, insertion tip at `z = +peg_length_mm`;
+  - Local origin at `(0, 0, 0)` at center of base plane;
+  - Sequential naming (`KF_Joint_Peg_001`, `KF_Joint_Peg_002`...);
+  - Taper angle draft (e.g. 2° or 5°) narrows tip smoothly for easy assembly while keeping watertight 2-manifold structure.
+- **Female Peg Socket Cavity**:
+  - Closed watertight negative cutter volume;
+  - Opening plane at `z = 0`, extends along +Z to flat bottom at `z = +socket_depth_mm`;
+  - Cavity diameter equals `peg_diameter + 2 * radial_clearance` (e.g. 3.0 mm peg + 0.15 mm radial clearance = 3.30 mm cavity diameter);
+  - Local origin at `(0, 0, 0)` at center of circular opening face;
+  - Sequential naming (`KF_Socket_Peg_001`, `KF_Socket_Peg_002`...).
+- **Contextual UX**:
+  - Selecting an active `KF_Joint_Peg_001` and clicking **Match Selected Peg** in the sidebar automatically reads its diameter into the socket settings.
+- **Clearance Contract Verification**:
+  - With default 3.0 mm peg and 0.15 mm clearance, socket cavity diameter is exactly 3.30 mm (0.15 mm radial clearance on all sides).
+
+**Interactive Undo Verification (Mandatory 3D Specialist Step)**:
+1. In a scene with reference figure geometry, click **Create Peg Joint** (creates `KF_Joint_Peg_001`).
+2. Click **Create Peg Socket** (creates `KF_Socket_Peg_001`).
+3. Press **Ctrl+Z** (or `Edit > Undo`).
+4. **Expected**:
+   - `KF_Socket_Peg_001` immediately disappears;
+   - Press **Ctrl+Z** again: `KF_Joint_Peg_001` immediately disappears;
+   - Reference geometry is untouched throughout;
+   - Zero temporary objects (`_KF_TMP_...`) or orphan mesh datablocks left behind.
+
+---
+
 ### KF-UAT-JOINT-002 — Double Ball
 Goal: Create a double-ball connector suitable for wrist/torso/neck experimentation.
 
