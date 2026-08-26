@@ -1,8 +1,8 @@
 """Unit tests for core/diagnostics.py."""
 
+import re
 import urllib.parse
 from pathlib import Path
-import yaml
 from addon.kinefig.core.diagnostics import (
     get_environment_info,
     collect_diagnostic_report,
@@ -19,18 +19,37 @@ ROOT = Path(__file__).resolve().parents[1]
 ISSUE_TEMPLATE_PATH = ROOT / ".github" / "ISSUE_TEMPLATE" / "uat_bug.yml"
 
 
+def load_yaml_dropdown_options(path: Path) -> dict:
+    """Parse dropdown options using pure standard library regex (no pyyaml dependency required)."""
+    content = path.read_text(encoding="utf-8")
+    dropdowns = {}
+    current_id = None
+    in_options = False
+
+    for line in content.splitlines():
+        id_match = re.match(r"\s*id:\s*([a-zA-Z0-9_]+)", line)
+        if id_match:
+            current_id = id_match.group(1)
+            in_options = False
+            continue
+        if re.match(r"\s*options:\s*", line):
+            in_options = True
+            if current_id:
+                dropdowns[current_id] = []
+            continue
+        if in_options:
+            opt_match = re.match(r'\s*-\s*["\'](.*?)["\']\s*$', line)
+            if opt_match and current_id:
+                dropdowns[current_id].append(opt_match.group(1))
+            elif not line.strip().startswith("-"):
+                in_options = False
+
+    return dropdowns
+
+
 def test_issue_form_dropdown_options_parity():
     """Verify that diagnostics mapping matches exact options in uat_bug.yml."""
-    with open(ISSUE_TEMPLATE_PATH, "r", encoding="utf-8") as f:
-        template = yaml.safe_load(f)
-
-    # Extract dropdown options from YAML template
-    yaml_dropdowns = {}
-    for item in template.get("body", []):
-        if item.get("type") == "dropdown":
-            item_id = item["id"]
-            options = item["attributes"]["options"]
-            yaml_dropdowns[item_id] = options
+    yaml_dropdowns = load_yaml_dropdown_options(ISSUE_TEMPLATE_PATH)
 
     # 1. Test OS mapping matches YAML
     mapped_os = map_os_for_issue_form()
