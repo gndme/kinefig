@@ -87,8 +87,30 @@ Check:
 
 ---
 
-### KF-UAT-JOINT-001 — Ball Joint
-Goal: Create a neck-style ball joint and matching socket.
+### KF-UAT-JOINT-001 — Male Ball Joint (PR-002)
+
+Goal:
+Create a parametric male ball joint with stem suitable for neck, wrist, and torso figure articulation experiments.
+
+Check:
+- Ball silhouette and spherical surface quality;
+- Stem proportions (diameter, length) and seamless solid attachment without internal faces;
+- Creation at 3D Cursor location with local joint axis along +Z;
+- Sequential naming (`KF_Joint_Ball_001`, `KF_Joint_Ball_002`...);
+- Interactive tweakability in Operator Redo panel (F9);
+- Visual acceptability for collectible articulated figures;
+- *Note*: Matching female socket cavity will be added in PR-003.
+
+**Interactive Undo Verification (Mandatory 3D Specialist Step)**:
+1. Open a scene with an unrelated test object (e.g. a reference figure limb or default cube).
+2. Click **Create Ball Joint** in the KineFig sidebar panel (creates `KF_Joint_Ball_001`).
+3. Press **Ctrl+Z** (or `Edit > Undo`).
+4. **Expected**:
+   - `KF_Joint_Ball_001` immediately and cleanly disappears from the 3D Viewport and Outliner;
+   - The unrelated reference object remains completely untouched;
+   - No temporary helper objects or mesh datablocks (`_KF_TMP_...`) are left behind.
+
+
 
 ### KF-UAT-JOINT-002 — Double Ball
 Goal: Create a double-ball connector suitable for wrist/torso/neck experimentation.

@@ -10,7 +10,9 @@ bl_info = {
 
 import bpy
 
+from .properties.joint_properties import KineFigBallJointProperties
 from .operators.smoke import KINEFIG_OT_create_smoke_object
+from .operators.joints import KINEFIG_OT_create_ball_joint
 from .operators.diagnostics import (
     KINEFIG_OT_copy_debug_info,
     KINEFIG_OT_export_diagnostic_report,
@@ -19,7 +21,9 @@ from .operators.diagnostics import (
 from .ui.panel import KINEFIG_PT_main
 
 _CLASSES = (
+    KineFigBallJointProperties,
     KINEFIG_OT_create_smoke_object,
+    KINEFIG_OT_create_ball_joint,
     KINEFIG_OT_copy_debug_info,
     KINEFIG_OT_export_diagnostic_report,
     KINEFIG_OT_report_bug,
@@ -30,9 +34,14 @@ _CLASSES = (
 def register():
     for cls in _CLASSES:
         bpy.utils.register_class(cls)
+    bpy.types.Scene.kinefig_ball_joint = bpy.props.PointerProperty(
+        type=KineFigBallJointProperties
+    )
 
 
 def unregister():
+    if hasattr(bpy.types.Scene, "kinefig_ball_joint"):
+        del bpy.types.Scene.kinefig_ball_joint
     for cls in reversed(_CLASSES):
         bpy.utils.unregister_class(cls)
 

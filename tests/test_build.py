@@ -55,8 +55,14 @@ def test_build_extension_produces_valid_zip(tmp_path):
         assert "core/logging.py" in namelist
         assert "core/diagnostics.py" in namelist
         assert "operators/smoke.py" in namelist
+        assert "operators/joints.py" in namelist
         assert "operators/diagnostics.py" in namelist
+        assert "geometry/__init__.py" in namelist
+        assert "geometry/joints.py" in namelist
+        assert "properties/__init__.py" in namelist
+        assert "properties/joint_properties.py" in namelist
         assert "ui/panel.py" in namelist
+
 
         # Verify build_info content injected
         build_info_content = zf.read("core/build_info.py").decode("utf-8")

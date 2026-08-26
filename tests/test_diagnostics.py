@@ -66,6 +66,15 @@ def test_issue_form_dropdown_options_parity():
         assert mapped_feat in yaml_dropdowns["feature"], f"Mapped feature '{mapped_feat}' not in YAML options"
 
 
+def test_map_feature_semantic_precedence():
+    """Verify exact semantic precedence: 'double ball' does not get shadowed by 'ball'."""
+    assert map_feature_for_issue_form("ball") == "Ball Joint"
+    assert map_feature_for_issue_form("double ball") == "Double Ball / Dumbbell"
+    assert map_feature_for_issue_form("Double Ball Joint") == "Double Ball / Dumbbell"
+    assert map_feature_for_issue_form("dumbbell") == "Double Ball / Dumbbell"
+
+
+
 def test_generate_github_issue_url_privacy():
     """Verify URL does NOT contain local paths or raw tracebacks in query parameters."""
     clear_logs()

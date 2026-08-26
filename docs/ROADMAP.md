@@ -1,166 +1,158 @@
 # KineFig — V1 Engineering Roadmap
 
-## Phase 0 — Foundation
+## Phase 0 — Foundation & Infrastructure
 
-Deliver:
-- add-on skeleton;
-- Blender extension manifest;
-- registration/unregistration;
-- N-panel;
-- centralized mm unit helpers;
-- validation primitives;
-- object naming;
-- build script;
-- smoke test;
-- basic CI structure.
+### PR-001 — Foundation, Units, Validation & Diagnostics (COMPLETED)
+Delivered:
+- Add-on skeleton & Blender 4.2+ extension manifest;
+- Centralized mm Unit Contract (`1 BU = 1m`, UI in mm, raw geometry conversion);
+- Parameter validation engine (rejecting 0, negative, NaN, inf);
+- Deterministic naming allocator (`KF_Smoke_Ball_001`, `KF_Smoke_Ball_002`...);
+- In-memory structured logging subsystem with bounded buffer;
+- Safe diagnostic metadata collector & UAT bug reporting flow (`.github/ISSUE_TEMPLATE/uat_bug.yml`);
+- Reproducible extension build pipeline producing standard package and traceable tester artifact;
+- Comprehensive automated unit tests & real Blender 4.2 packaged zip runtime integration tests in CI.
+
+Exit gate: **PASSED (Merged into main)**.
+
+---
+
+## Phase 1 — Joint Geometry Core
+
+### PR-002 — Ball Joint Geometry Core (IN PROGRESS)
+Build:
+- Parametric male ball joint geometry (sphere + cylindrical stem);
+- Watertight manifold mesh construction;
+- Dedicated Joint UI panel in 3D Viewport sidebar;
+- Joint metadata schema (`kf_type="joint"`, `kf_joint_type="ball"`, dimensions);
+- Deterministic sequential naming (`KF_Joint_Ball_001`, `KF_Joint_Ball_002`...);
+- Undo support and scene protection;
+- Real Blender packaged zip integration tests for geometry dimensions, manifoldness, and Undo.
+
+### PR-003 — Socket Engine Core
+Build:
+- Parametric female socket cavity generator for ball joints;
+- Clearance offset subtraction volume;
+- Entry chamfer and retention cup;
+- Non-destructive socket placement helper.
+
+### PR-004 — Double Ball Joint (Dumbbell)
+Build on Ball Joint and Socket primitives:
+- Independent dual ball dimensions;
+- Center connecting shaft;
+- Wrist, neck, and torso articulation presets.
+
+### PR-005 — Peg + Socket
+Build:
+- Cylindrical peg with optional draft/taper angle;
+- Matching receiver socket;
+- Clearance compensation.
 
 Exit gate:
-- clean install;
-- clean uninstall;
-- create/remove a test object;
-- Undo works;
-- build ZIP is reproducible.
+- Measured geometry correct;
+- Rotated/scaled target cases tested;
+- Basic UAT pass.
 
-## Phase 1 — Joint Core
-
-### 1. Ball Joint
-Build:
-- ball geometry;
-- stem;
-- socket;
-- clearance;
-- combined operator/UI.
-
-### 2. Double Ball
-Build on Ball Joint primitives.
-
-### 3. Peg + Socket
-Build:
-- peg;
-- optional taper;
-- matching socket;
-- clearance.
-
-Exit gate:
-- measured geometry correct;
-- rotated/scaled target cases tested;
-- basic UAT pass.
+---
 
 ## Phase 2 — Split + Socket Engine
 
+### PR-006 — Split Engine
 Build:
-- split plane;
-- safe mesh duplication/separation;
-- joint side assignment;
-- socket insertion into target;
-- cleanup/Undo.
+- Split plane generation;
+- Safe mesh separation;
+- Boundary capping and normal preservation.
 
-Exit gate:
-- Split Limb UAT;
-- Split Torso UAT;
-- no unrelated mesh mutation.
+### PR-007 — Split Limb & Torso UI
+Build:
+- Split limb workflow operator;
+- Part naming (`KF_FigurePart_...`);
+- Clean Undo and modifier preservation.
+
+---
 
 ## Phase 3 — Hinge System
 
+### PR-008 — Single Hinge Engine
 Build:
-- hinge base engine;
-- pin;
-- knuckles;
-- axis metadata;
-- clearance;
-- single hinge;
-- double hinge.
+- Hinge base geometry, pin, knuckles;
+- Articulation axis metadata;
+- Elbow / knee articulation prototype.
 
-Primary UAT:
-- elbow;
-- knee.
-
-## Phase 4 — Swivel + Ankle
-
+### PR-009 — Double Hinge
 Build:
-- swivel;
-- ankle rocker prototype.
+- High-range double-pivot knee/elbow articulation;
+- Center block geometry;
+- Part count and collision check.
 
-Ankle rocker is allowed to move to V1.1 if it blocks V1 quality.
+---
 
-## Phase 5 — Placement + Symmetry
+## Phase 4 — Swivel & Ankle Rocker
 
+### PR-010 — Swivel Articulation
 Build:
-- placement gizmo;
-- axis orientation;
-- numeric offset;
-- mirror joint;
-- left/right metadata.
+- Axial swivel rotation joint (bicep, thigh);
+- Retention rim and peg.
 
-Primary UAT:
-- shoulders;
-- elbows;
-- hips;
-- knees.
-
-## Phase 6 — Test System
-
+### PR-011 — Ankle Rocker
 Build:
-- pose preview;
-- angle control;
-- nominal range;
-- collision detection;
-- collision warning display.
+- Dual-axis ankle articulation prototype.
 
-V1 collision check:
-- no full physics;
-- deterministic intersection checks are enough.
+---
 
-## Phase 7 — Print System
+## Phase 5 — Placement & Symmetry
 
+### PR-012 — Placement Helpers
 Build:
-- clearance profile;
-- custom clearance;
-- part sanity checks;
-- naming;
-- batch STL export.
+- 3D Cursor and landmark alignment;
+- Joint orientation alignment gizmo.
 
-## Phase 8 — UAT Figure
+### PR-013 — Mirror Joint
+Build:
+- Left-to-right joint symmetry mirroring;
+- Name updating (`_L_` to `_R_`);
+- Parity preservation.
 
-Create a neutral internal humanoid test mesh or use a properly licensed test asset.
+---
 
-UAT matrix:
-- neck;
-- shoulders;
-- elbows;
-- wrists;
-- waist;
-- hips;
-- knees;
-- ankles.
+## Phase 6 — Articulation Test System
 
-Do not bundle copyrighted SHF/Bandai models.
+### PR-014 — Pose Preview
+### PR-015 — Range Check
+### PR-016 — Collision Detection
 
-## Phase 9 — V1 RC
+---
 
-Requirements:
-- no BLOCKER/HIGH ChatGPT findings;
-- core UAT pass;
-- supported Blender versions pass;
-- install docs;
-- release notes;
-- reproducible ZIP.
+## Phase 7 — 3D Print Preparation
 
-## PR Sequence
+### PR-017 — Clearance Profiles
+### PR-018 — Part Sanity Check
+### PR-019 — Batch STL Export
+
+---
+
+## Phase 8 & 9 — UAT Figure & V1 RC
+
+### PR-020 — 3D Specialist UAT Polish
+### PR-021 — V1 Release Candidate
+
+---
+
+## PR Sequence Summary
 
 ```text
-PR-001 addon foundation
-PR-002 units + validation
-PR-003 ball joint geometry
-PR-004 socket engine
-PR-005 double-ball joint
-PR-006 peg + socket
-PR-007 split engine
-PR-008 split limb UI
-PR-009 hinge engine
-PR-010 double hinge
-PR-011 swivel
-PR-012 placement
+PR-001 addon foundation + units + validation + diagnostics + packaging [DONE]
+PR-002 ball joint geometry core [IN PROGRESS]
+PR-003 socket engine
+PR-004 double ball joint
+PR-005 peg + socket
+PR-006 split engine
+PR-007 split limb UI
+PR-008 single hinge
+PR-009 double hinge
+PR-010 swivel
+PR-011 ankle rocker
+PR-012 placement helpers
 PR-013 mirror joint
 PR-014 pose preview
 PR-015 range check
@@ -168,6 +160,6 @@ PR-016 collision check
 PR-017 clearance profiles
 PR-018 part check
 PR-019 batch export
-PR-020 UAT fixes
+PR-020 UAT polish
 PR-021 V1 RC
 ```

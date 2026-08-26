@@ -75,10 +75,12 @@ def map_severity_for_issue_form(severity: str = "") -> str:
 def map_feature_for_issue_form(feature: str = "") -> str:
     """Map feature string to exact dropdown option in uat_bug.yml."""
     key = (feature or "foundation").strip().lower()
-    for prefix, full in FEATURE_OPTIONS.items():
+    # Sort keys by length descending so longer phrases ("double ball") match before shorter ones ("ball")
+    for prefix in sorted(FEATURE_OPTIONS.keys(), key=len, reverse=True):
         if prefix in key:
-            return full
+            return FEATURE_OPTIONS[prefix]
     return "Foundation / Smoke Test"
+
 
 
 def get_environment_info(context: Optional[Any] = None) -> Dict[str, Any]:
