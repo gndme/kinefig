@@ -1,0 +1,1 @@
+"""KineFig automated test suite."""

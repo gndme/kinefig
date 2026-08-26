@@ -1,0 +1,118 @@
+name: "3D UAT Bug Report"
+description: "Report an issue, visual flaw, or unexpected behavior found during Blender UAT testing."
+title: "[UAT BUG] "
+labels: ["uat", "bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping test **KineFig**!
+        Please fill out this report so we can reproduce and resolve the issue quickly.
+        *(Tip: In Blender, open the KineFig panel -> **Help & Diagnostics** -> click **Copy Debug Info**, then paste below).*
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: "How severely does this block figure workflow testing?"
+      options:
+        - "Blocker (Crash, data corruption, cannot proceed at all)"
+        - "High (Major joint flaw, broken geometry, missing feature step)"
+        - "Medium (Usability issue, incorrect calculation, minor visual defect)"
+        - "Low / Nit (Small UI typo, suboptimal label, minor styling)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature
+    attributes:
+      label: Feature / Workflow Area
+      options:
+        - "Foundation / Smoke Test"
+        - "Ball Joint"
+        - "Double Ball / Dumbbell"
+        - "Peg + Socket"
+        - "Hinge / Double Hinge"
+        - "Split Limb / Torso"
+        - "Diagnostics / Bug Reporting"
+        - "Other / Unsure"
+    validations:
+      required: true
+
+  - type: input
+    id: build
+    attributes:
+      label: KineFig Build / Commit SHA
+      description: "Found in KineFig sidebar header or via 'Copy Debug Info'."
+      placeholder: "e.g. v0.0.1 (Build 857bfb1)"
+    validations:
+      required: true
+
+  - type: input
+    id: blender_version
+    attributes:
+      label: Blender Version
+      placeholder: "e.g. 4.2.0 LTS"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - "Windows"
+        - "macOS (Apple Silicon)"
+        - "macOS (Intel)"
+        - "Linux"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: "Explain step-by-step how to trigger the problem from a fresh scene."
+      placeholder: |
+        1. Open Blender and switch to Object Mode.
+        2. In KineFig sidebar, click '...'
+        3. Observe...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Result
+      description: "What did you expect to happen?"
+      placeholder: "Expected a clean 10mm ball joint created without errors."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Result
+      description: "What actually happened? (Include error messages if any)"
+      placeholder: "Operator failed with an error, or geometry was distorted."
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostic Info
+      description: "Paste the output from 'Copy Debug Info' button here."
+      render: shell
+      placeholder: |
+        KineFig: 0.0.1
+        Build: 857bfb1
+        Blender: 4.2.0
+        ...
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        *(Optional) You may attach screenshots or non-confidential sample .blend files by dragging and dropping them below.*
