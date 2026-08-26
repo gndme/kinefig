@@ -3,6 +3,7 @@
 import bpy
 from ..core.units import mm_to_blender
 from ..core.naming import get_next_object_name
+from ..core.logging import log_info
 
 
 class KINEFIG_OT_create_smoke_object(bpy.types.Operator):
@@ -27,4 +28,5 @@ class KINEFIG_OT_create_smoke_object(bpy.types.Operator):
             obj.name = get_next_object_name("Smoke", detail="Ball", existing_names=existing_names)
             obj["kf_type"] = "smoke"
             self.report({"INFO"}, f"Created test object: {obj.name}")
+            log_info(f"Created smoke test object: {obj.name}", object_name=obj.name, diameter_mm=10.0)
         return {"FINISHED"}

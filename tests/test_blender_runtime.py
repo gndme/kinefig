@@ -115,7 +115,7 @@ def run_tests():
     report = collect_diagnostic_report(bpy.context, active_feature="SmokeTest")
     assert report["system"]["blender_version"] == bpy.app.version_string
     assert report["system"]["blender_mode"] == "OBJECT"
-    assert "KF_Smoke_Ball_002" in str(report["recent_logs"]) or len(report["recent_logs"]) > 0
+    assert len(report["recent_logs"]) > 0, "No structured logs found in diagnostic report"
 
     # Test copy debug info operator execution
     res_copy = bpy.ops.kinefig.copy_debug_info()
