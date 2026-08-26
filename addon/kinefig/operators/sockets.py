@@ -145,7 +145,7 @@ class KINEFIG_OT_use_selected_ball(bpy.types.Operator):
 
         try:
             val = require_positive(ball_d_raw, "kf_ball_diameter_mm")
-        except (KineFigValidationError, Exception) as exc:
+        except Exception as exc:
             self.report({"WARNING"}, f"Invalid ball diameter metadata on {obj.name}: {exc}")
             log_warning(f"Failed to use selected ball metadata from {obj.name}: {exc}")
             return {"CANCELLED"}
@@ -286,7 +286,7 @@ class KINEFIG_OT_use_selected_peg(bpy.types.Operator):
 
         try:
             val = require_positive(peg_d_raw, "kf_peg_diameter_mm")
-        except (KineFigValidationError, Exception) as exc:
+        except Exception as exc:
             self.report({"WARNING"}, f"Invalid peg diameter metadata on {obj.name}: {exc}")
             log_warning(f"Failed to use selected peg metadata from {obj.name}: {exc}")
             return {"CANCELLED"}

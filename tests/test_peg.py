@@ -11,6 +11,12 @@ from addon.kinefig.core.clearance import compute_socket_diameter
 from addon.kinefig.core.errors import KineFigGeometryError
 from addon.kinefig.geometry.joints import create_peg_geometry
 from addon.kinefig.geometry.sockets import create_peg_socket_geometry
+from addon.kinefig.ui.panel import (
+    _get_valid_selected_peg_diameter,
+    _get_valid_selected_ball_diameter,
+    KINEFIG_PT_main,
+)
+from addon.kinefig.operators.sockets import KINEFIG_OT_use_selected_peg
 
 
 def test_peg_unit_conversions():
@@ -169,3 +175,196 @@ def test_peg_socket_rollback_on_failure():
 
     assert set(bpy.data.objects.keys()) == baseline_objs
     assert set(bpy.data.meshes.keys()) == baseline_meshes
+
+
+@pytest.mark.parametrize(
+    "malformed_val",
+    [
+        "abc",
+        None,
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0,
+        0.0,
+        -1,
+        -5.0,
+    ],
+)
+def test_get_valid_selected_peg_diameter_malformed(malformed_val):
+    """Verify _get_valid_selected_peg_diameter returns None on all malformed metadata values."""
+    mock_obj = {
+        "kf_type": "joint",
+        "kf_joint_type": "peg",
+        "kf_peg_diameter_mm": malformed_val,
+    }
+    assert _get_valid_selected_peg_diameter(mock_obj) is None
+
+
+def test_get_valid_selected_peg_diameter_valid():
+    """Verify _get_valid_selected_peg_diameter returns float on valid positive finite metadata."""
+    mock_obj = {
+        "kf_type": "joint",
+        "kf_joint_type": "peg",
+        "kf_peg_diameter_mm": 3.0,
+    }
+    assert _get_valid_selected_peg_diameter(mock_obj) == 3.0
+
+    mock_obj["kf_peg_diameter_mm"] = 4.5
+    assert _get_valid_selected_peg_diameter(mock_obj) == 4.5
+
+
+def test_get_valid_selected_peg_diameter_non_peg_or_missing():
+    """Verify _get_valid_selected_peg_diameter returns None for non-peg objects or missing metadata."""
+    assert _get_valid_selected_peg_diameter(None) is None
+    assert _get_valid_selected_peg_diameter({}) is None
+    assert _get_valid_selected_peg_diameter({"kf_type": "socket"}) is None
+    assert _get_valid_selected_peg_diameter({"kf_type": "joint", "kf_joint_type": "ball"}) is None
+    assert _get_valid_selected_peg_diameter({"kf_type": "joint", "kf_joint_type": "peg"}) is None
+
+
+@pytest.mark.parametrize(
+    "malformed_val",
+    [
+        "abc",
+        None,
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0,
+        0.0,
+        -1,
+        -5.0,
+    ],
+)
+def test_get_valid_selected_ball_diameter_malformed(malformed_val):
+    """Verify _get_valid_selected_ball_diameter returns None on all malformed metadata values."""
+    mock_obj = {
+        "kf_type": "joint",
+        "kf_joint_type": "ball",
+        "kf_ball_diameter_mm": malformed_val,
+    }
+    assert _get_valid_selected_ball_diameter(mock_obj) is None
+
+
+@pytest.mark.parametrize(
+    "malformed_val",
+    [
+        "abc",
+        None,
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0,
+        0.0,
+        -1,
+        -5.0,
+    ],
+)
+def test_panel_draw_safe_with_malformed_peg_metadata(malformed_val):
+    """Verify Panel.draw does not raise when active object has malformed peg metadata.
+
+    Asserts:
+    1. _get_valid_selected_peg_diameter returns None so invalid action is not presented.
+    2. Panel.draw executes without exception.
+    3. Existing scene socket settings are not mutated.
+    """
+    mock_obj = MagicMock()
+    data = {
+        "kf_type": "joint",
+        "kf_joint_type": "peg",
+        "kf_peg_diameter_mm": malformed_val,
+    }
+    mock_obj.get.side_effect = data.get
+    mock_obj.name = "KF_Joint_Peg_Mock"
+
+    # Context mock
+    context = MagicMock()
+    context.active_object = mock_obj
+
+    # Scene mock with peg socket property
+    scene = MagicMock()
+    scene.kinefig_peg_socket = MagicMock()
+    scene.kinefig_peg_socket.peg_diameter_mm = 3.0
+    scene.kinefig_peg_socket.radial_clearance_mm = 0.15
+    scene.kinefig_peg_socket.socket_depth_mm = 5.0
+    scene.kinefig_peg_socket.segments = 32
+
+    # Provide ball joint and socket scene props to avoid AttributeError in panel draw
+    scene.kinefig_ball_joint = MagicMock()
+    scene.kinefig_ball_joint.ball_diameter_mm = 5.0
+    scene.kinefig_ball_joint.stem_diameter_mm = 3.0
+    scene.kinefig_ball_joint.stem_length_mm = 5.0
+    scene.kinefig_ball_joint.segments = 32
+    scene.kinefig_ball_joint.rings = 16
+
+    scene.kinefig_ball_socket = MagicMock()
+    scene.kinefig_ball_socket.ball_diameter_mm = 5.0
+    scene.kinefig_ball_socket.clearance_mm = 0.15
+    scene.kinefig_ball_socket.socket_depth_mm = 3.5
+    scene.kinefig_ball_socket.segments = 32
+    scene.kinefig_ball_socket.rings = 16
+
+    scene.kinefig_peg_joint = MagicMock()
+    scene.kinefig_peg_joint.peg_diameter_mm = 3.0
+    scene.kinefig_peg_joint.peg_length_mm = 5.0
+    scene.kinefig_peg_joint.taper_angle_deg = 0.0
+    scene.kinefig_peg_joint.segments = 32
+
+    context.scene = scene
+
+    panel = KINEFIG_PT_main()
+    panel.layout = MagicMock()
+    panel.layout.box.return_value = MagicMock()
+
+    # Must NOT raise exception during draw
+    panel.draw(context)
+
+    # Valid diameter must be None
+    assert _get_valid_selected_peg_diameter(mock_obj) is None
+
+    # Scene socket settings must remain completely unchanged
+    assert scene.kinefig_peg_socket.peg_diameter_mm == 3.0
+
+
+@pytest.mark.parametrize(
+    "malformed_val",
+    [
+        "abc",
+        None,
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0,
+        0.0,
+        -1,
+        -5.0,
+    ],
+)
+def test_use_selected_peg_operator_rejection(malformed_val):
+    """Verify KINEFIG_OT_use_selected_peg safely cancels and preserves scene settings."""
+    op = KINEFIG_OT_use_selected_peg()
+    reports = []
+    op.report = lambda level, msg: reports.append((level, msg))
+
+    mock_obj = MagicMock()
+    data = {
+        "kf_type": "joint",
+        "kf_joint_type": "peg",
+        "kf_peg_diameter_mm": malformed_val,
+    }
+    mock_obj.get.side_effect = data.get
+    mock_obj.name = "KF_Joint_Peg_Mock"
+
+    context = MagicMock()
+    context.active_object = mock_obj
+    context.scene = MagicMock()
+    context.scene.kinefig_peg_socket = MagicMock()
+    context.scene.kinefig_peg_socket.peg_diameter_mm = 3.0
+
+    res = op.execute(context)
+    assert res == {"CANCELLED"}
+    # Scene setting must NOT be modified
+    assert context.scene.kinefig_peg_socket.peg_diameter_mm == 3.0
+    assert any("WARNING" in r[0] for r in reports)
+

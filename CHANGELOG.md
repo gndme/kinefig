@@ -8,6 +8,8 @@
 - Parameter validation (`validate_peg_parameters`, `validate_peg_socket_parameters`): enforces positive finite dimensions, draft angle limits (`0 <= taper < collapse angle`), and strict integer tessellation in [3, 256].
 - Operators `kinefig.create_peg_joint`, `kinefig.create_peg_socket`, and contextual `kinefig.use_selected_peg` (reads peg diameter from active peg joint into socket settings).
 - Sidebar N-panel UI: dedicated Male Peg Joint and Peg Socket Receiver cards with diameter, length, taper, radial clearance, and live cavity diameter readout.
+- Hardened Panel.draw against malformed custom metadata: extracted safe helpers `_get_valid_selected_peg_diameter` and `_get_valid_selected_ball_diameter` to prevent draw exceptions on string, None, NaN, inf, or negative values without mutating scene settings.
+- Cleaned redundant exception clauses in `KINEFIG_OT_use_selected_peg` and `KINEFIG_OT_use_selected_ball` (`except Exception as exc:`).
 - Transactional rollback on failure: cleans all created objects and meshes on any failure, preserving scene safety.
 - Complete unit tests (`tests/test_peg.py`, `tests/test_validation.py`) and real Blender 4.2 packaged zip runtime integration tests (`tests/test_blender_runtime.py`).
 

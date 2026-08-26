@@ -104,6 +104,7 @@ def run_tests():
         from kinefig.geometry import sockets as sockets_mod
         from kinefig.geometry.joints import create_ball_joint_geometry
         from kinefig.geometry.sockets import create_ball_socket_geometry
+        from kinefig.ui.panel import _get_valid_selected_peg_diameter, _get_valid_selected_ball_diameter
 
         print(f"Imported package from: {kinefig.__file__}")
         assert str(addon_pkg_dir) in str(Path(kinefig.__file__).resolve()), (
@@ -586,12 +587,35 @@ def run_tests():
         assert res_match == {"FINISHED"}
         assert math.isclose(bpy.context.scene.kinefig_peg_socket.peg_diameter_mm, 3.0, abs_tol=1e-5)
 
-        # Malformed metadata test
-        peg_obj["kf_peg_diameter_mm"] = float("nan")
-        res_peg_malformed = bpy.ops.kinefig.use_selected_peg()
-        assert res_peg_malformed == {"CANCELLED"}
-        peg_obj["kf_peg_diameter_mm"] = 3.0
-        print("  -> PASSED: use_selected_peg populated successfully; malformed metadata rejected cleanly")
+        # Malformed metadata test (MEDIUM-01 Regression Gate)
+        print("  -> Testing safe rejection of malformed peg metadata in UI and operator...")
+        orig_peg_d = peg_obj.get("kf_peg_diameter_mm")
+        malformed_test_cases = [
+            "abc",
+            None,
+            float("nan"),
+            float("inf"),
+            float("-inf"),
+            0,
+            -1,
+        ]
+        for bad_val in malformed_test_cases:
+            peg_obj["kf_peg_diameter_mm"] = bad_val
+            # 1. UI helper must return None so malformed metadata is never presented as valid
+            assert _get_valid_selected_peg_diameter(peg_obj) is None, (
+                f"Expected None from _get_valid_selected_peg_diameter for {bad_val!r}"
+            )
+            # 2. Operator execution must safely CANCEL
+            res_bad = bpy.ops.kinefig.use_selected_peg()
+            assert res_bad == {"CANCELLED"}, f"Expected CANCELLED for {bad_val!r}, got {res_bad}"
+            # 3. Scene setting must NOT be mutated
+            assert math.isclose(bpy.context.scene.kinefig_peg_socket.peg_diameter_mm, 3.0, abs_tol=1e-5), (
+                f"Scene setting was mutated by malformed peg metadata {bad_val!r}"
+            )
+
+        # Restore original valid metadata
+        peg_obj["kf_peg_diameter_mm"] = orig_peg_d
+        print("  -> PASSED: All malformed metadata cases (abc, None, NaN, +/-inf, 0, -1) safely rejected without scene mutation")
 
         # 18. Testing Peg / Peg Socket Transactional Rollback on failure (PR-005)
         print("\n[18/19] Testing peg transactional rollback on parameter validation error...")
