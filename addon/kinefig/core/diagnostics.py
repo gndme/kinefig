@@ -4,10 +4,11 @@ Collects only safe, non-sensitive environmental and operational data:
 - Version and Git commit SHA
 - Blender version and OS platform
 - Scene unit scale and active mode
-- Recent in-memory structured logs
-- Last captured error/traceback
+- Recent in-memory structured logs (sanitized for export)
 
-Never includes mesh geometry, texture data, .blend files, or unrelated paths.
+Never includes mesh geometry, texture data, .blend files, or local user paths.
+GitHub Issue URL only contains high-level environment metadata to prevent
+any local path leakage in browser requests.
 """
 
 import sys
@@ -17,10 +18,67 @@ from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 from .build_info import VERSION, COMMIT_SHA, get_version_string, get_short_sha
-from .logging import get_recent_logs, get_last_error
+from .logging import get_recent_logs, get_last_error, sanitize_privacy_text
 
 GITHUB_REPO = "gndme/kinefig"
 GITHUB_NEW_ISSUE_URL = f"https://github.com/{GITHUB_REPO}/issues/new"
+
+# Exact dropdown options matching .github/ISSUE_TEMPLATE/uat_bug.yml
+SEVERITY_OPTIONS = {
+    "blocker": "Blocker (Crash, data corruption, cannot proceed at all)",
+    "high": "High (Major joint flaw, broken geometry, missing feature step)",
+    "medium": "Medium (Usability issue, incorrect calculation, minor visual defect)",
+    "low": "Low / Nit (Small UI typo, suboptimal label, minor styling)",
+    "nit": "Low / Nit (Small UI typo, suboptimal label, minor styling)",
+}
+
+FEATURE_OPTIONS = {
+    "foundation": "Foundation / Smoke Test",
+    "smoke": "Foundation / Smoke Test",
+    "ball": "Ball Joint",
+    "double ball": "Double Ball / Dumbbell",
+    "dumbbell": "Double Ball / Dumbbell",
+    "peg": "Peg + Socket",
+    "socket": "Peg + Socket",
+    "hinge": "Hinge / Double Hinge",
+    "split": "Split Limb / Torso",
+    "diagnostics": "Diagnostics / Bug Reporting",
+    "bug": "Diagnostics / Bug Reporting",
+    "other": "Other / Unsure",
+}
+
+
+def map_os_for_issue_form() -> str:
+    """Map system platform to exact options in uat_bug.yml."""
+    sys_name = platform.system()
+    if sys_name == "Windows":
+        return "Windows"
+    elif sys_name == "Linux":
+        return "Linux"
+    elif sys_name == "Darwin":
+        machine = platform.machine().lower()
+        if "arm" in machine or "aarch" in machine:
+            return "macOS (Apple Silicon)"
+        return "macOS (Intel)"
+    return "Linux"
+
+
+def map_severity_for_issue_form(severity: str = "") -> str:
+    """Map severity string to exact dropdown option in uat_bug.yml."""
+    key = (severity or "medium").strip().lower()
+    for prefix, full in SEVERITY_OPTIONS.items():
+        if prefix in key:
+            return full
+    return SEVERITY_OPTIONS["medium"]
+
+
+def map_feature_for_issue_form(feature: str = "") -> str:
+    """Map feature string to exact dropdown option in uat_bug.yml."""
+    key = (feature or "foundation").strip().lower()
+    for prefix, full in FEATURE_OPTIONS.items():
+        if prefix in key:
+            return full
+    return "Foundation / Smoke Test"
 
 
 def get_environment_info(context: Optional[Any] = None) -> Dict[str, Any]:
@@ -51,6 +109,7 @@ def get_environment_info(context: Optional[Any] = None) -> Dict[str, Any]:
         "blender_version": blender_version,
         "python_version": platform.python_version(),
         "os_platform": f"{platform.system()} {platform.release()} ({platform.machine()})",
+        "issue_form_os": map_os_for_issue_form(),
         "blender_mode": mode,
         "scene_unit_scale": unit_scale,
         "active_object_type": active_obj_type,
@@ -59,7 +118,7 @@ def get_environment_info(context: Optional[Any] = None) -> Dict[str, Any]:
 
 
 def collect_diagnostic_report(context: Optional[Any] = None, active_feature: str = "") -> Dict[str, Any]:
-    """Generate a complete diagnostic report dictionary for export or bug filing."""
+    """Generate a complete diagnostic report dictionary for export."""
     env = get_environment_info(context)
     last_err = get_last_error()
     recent_logs = get_recent_logs()
@@ -95,39 +154,57 @@ def format_clipboard_debug_info(context: Optional[Any] = None, active_feature: s
 def generate_github_issue_url(
     title: str = "",
     feature: str = "",
-    severity: str = "Medium",
+    severity: str = "",
     steps: str = "",
     expected: str = "",
     actual: str = "",
     context: Optional[Any] = None,
 ) -> str:
-    """Generate a prefilled URL targeting the GitHub Issue Form (uat_bug.yml)."""
+    """Generate a prefilled URL targeting the GitHub Issue Form (uat_bug.yml).
+
+    PRIVACY GUARANTEE:
+    Does NOT put raw logs or tracebacks into URL parameters to prevent
+    any potential local path exposure in browser URLs. Only safe environment
+    identifiers and mapped dropdown options are included.
+    """
     env = get_environment_info(context)
-    debug_text = format_clipboard_debug_info(context, active_feature=feature)
-    recent_logs_text = "\n".join(get_recent_logs()[-20:]) if get_recent_logs() else "No logs recorded"
+    form_os = map_os_for_issue_form()
+    form_severity = map_severity_for_issue_form(severity)
+    form_feature = map_feature_for_issue_form(feature)
 
-    diagnostic_payload = f"```\n{debug_text}\n\nRecent Logs:\n{recent_logs_text}\n```"
+    last_err = get_last_error()
+    err_summary = last_err["message"] if last_err else "None"
 
-    # Pre-fill query parameters for GitHub Issue Form
+    # Only include non-path environment overview in prefilled diagnostics
+    safe_diagnostic_summary = (
+        f"KineFig: {env['kinefig_version']} ({env['short_sha']})\n"
+        f"Blender: {env['blender_version']}\n"
+        f"OS: {env['os_platform']}\n"
+        f"Mode: {env['blender_mode']}\n"
+        f"Unit Scale: {env['scene_unit_scale']}\n"
+        f"Last Error: {err_summary}\n"
+        f"Note: Detailed logs can be pasted from 'Copy Debug Info' or exported via 'Export Diagnostic Report'."
+    )
+
+    # Pre-fill query parameters matching exact uat_bug.yml IDs
     params = {
         "template": "uat_bug.yml",
-        "title": f"[UAT BUG] {title}" if title else "[UAT BUG] Issue title",
-        "build": env["short_sha"],
+        "title": f"[UAT BUG] {title}" if title else "[UAT BUG] ",
+        "build": f"v{env['kinefig_version']} (Build {env['short_sha']})",
         "blender_version": env["blender_version"],
-        "os": env["os_platform"],
-        "feature": feature or "General",
-        "severity": severity,
+        "os": form_os,
+        "feature": form_feature,
+        "severity": form_severity,
         "steps": steps or "1. \n2. \n3. ",
         "expected": expected or "What should have happened",
         "actual": actual or "What actually happened",
-        "diagnostics": diagnostic_payload,
+        "diagnostics": safe_diagnostic_summary,
     }
 
     query_str = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
     return f"{GITHUB_NEW_ISSUE_URL}?{query_str}"
 
 
-# Interface for Future One-Click Remote Backend Submission (Part F Mode 2)
 class BugReportSenderInterface:
     """Abstract interface for future remote bug submission through KineFig backend."""
 

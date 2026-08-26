@@ -14,9 +14,15 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
 
+    env:
+      # Ensure the true PR branch HEAD SHA is used rather than the ephemeral merge commit SHA
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -61,12 +67,12 @@ jobs:
           blender --version
           blender --command extension validate dist/kinefig-0.0.1.zip
 
-      - name: Real Blender Runtime Integration Test
+      - name: Real Blender Runtime Integration Test (On Packaged Zip)
         if: matrix.python-version == '3.11'
         run: |
           blender --background --factory-startup --python tests/test_blender_runtime.py
 
-      - name: Upload Extension Artifact
+      - name: Upload Extension Artifacts
         if: matrix.python-version == '3.11'
         uses: actions/upload-artifact@v4
         with:
