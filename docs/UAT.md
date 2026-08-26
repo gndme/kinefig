@@ -111,6 +111,33 @@ Check:
    - No temporary helper objects or mesh datablocks (`_KF_TMP_...`) are left behind.
 
 
+---
+
+### KF-UAT-JOINT-003 — Female Ball Socket Cavity Core (PR-003)
+
+Goal:
+Create a parametric female ball socket cavity cutter tool matching a male ball joint with explicit radial clearance.
+
+Check:
+- Cavity volume shape: spherical dome trimmed with a flat circular face at the insertion plane `z = 0`;
+- Radial clearance: cavity diameter equals `ball_diameter + 2 * clearance` (e.g. 5.0 mm ball + 0.15 mm radial clearance = 5.30 mm cavity diameter);
+- Depth contract: total height along Z matches `socket_depth` (e.g. 3.5 mm from opening plane to apex);
+- Retaining undercut: when depth exceeds radius (e.g. 3.5 mm depth for 2.65 mm radius), the circular opening is narrower than the cavity equator, forming an articulated retaining lip;
+- Contextual UX: selecting an active male ball joint and clicking **Match Selected Ball** automatically reads its diameter into the socket settings;
+- Sequential naming: generates `KF_Socket_Ball_001`, `KF_Socket_Ball_002` without collisions;
+- Geometry quality: watertight, closed 2-manifold cutter volume ready for Boolean subtraction into body meshes;
+- *Note*: PR-003 provides the cutter/cavity tool object. Automatic Boolean carving into figure body meshes belongs to future body socket seating features.
+
+**Interactive Undo Verification (Mandatory 3D Specialist Step)**:
+1. In a scene with an existing ball joint (or reference limb), click **Create Ball Socket** (creates `KF_Socket_Ball_001`).
+2. Press **Ctrl+Z** (or `Edit > Undo`).
+3. **Expected**:
+   - `KF_Socket_Ball_001` cleanly disappears from 3D Viewport and Outliner;
+   - Pre-existing ball joints and reference models remain completely intact;
+   - Zero temporary objects (`_KF_TMP_...`) or orphan meshes are left behind.
+
+
+---
 
 ### KF-UAT-JOINT-002 — Double Ball
 Goal: Create a double-ball connector suitable for wrist/torso/neck experimentation.
