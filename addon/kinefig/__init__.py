@@ -11,10 +11,18 @@ bl_info = {
 import bpy
 
 from .operators.smoke import KINEFIG_OT_create_smoke_object
+from .operators.diagnostics import (
+    KINEFIG_OT_copy_debug_info,
+    KINEFIG_OT_export_diagnostic_report,
+    KINEFIG_OT_report_bug,
+)
 from .ui.panel import KINEFIG_PT_main
 
 _CLASSES = (
     KINEFIG_OT_create_smoke_object,
+    KINEFIG_OT_copy_debug_info,
+    KINEFIG_OT_export_diagnostic_report,
+    KINEFIG_OT_report_bug,
     KINEFIG_PT_main,
 )
 

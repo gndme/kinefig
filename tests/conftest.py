@@ -29,8 +29,17 @@ if "bpy" not in sys.modules:
         bl_region_type = ""
         bl_category = ""
 
+    def mock_prop(*args, **kwargs):
+        return None
+
     mock_bpy.types.Operator = MockOperator
     mock_bpy.types.Panel = MockPanel
+    mock_bpy.props.StringProperty = mock_prop
+    mock_bpy.props.FloatProperty = mock_prop
+    mock_bpy.props.IntProperty = mock_prop
+    mock_bpy.props.BoolProperty = mock_prop
+    mock_bpy.props.EnumProperty = mock_prop
+    mock_bpy.path.abspath = lambda p: p
     mock_bpy.utils.register_class = MagicMock()
     mock_bpy.utils.unregister_class = MagicMock()
 

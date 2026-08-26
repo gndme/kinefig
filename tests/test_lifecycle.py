@@ -4,6 +4,11 @@ from unittest.mock import MagicMock
 import bpy
 import addon.kinefig as kinefig
 from addon.kinefig.operators.smoke import KINEFIG_OT_create_smoke_object
+from addon.kinefig.operators.diagnostics import (
+    KINEFIG_OT_copy_debug_info,
+    KINEFIG_OT_export_diagnostic_report,
+    KINEFIG_OT_report_bug,
+)
 
 
 class MockBlenderObject:
@@ -76,3 +81,16 @@ def test_smoke_operator_execution_and_repeated_naming():
     assert result2 == {"FINISHED"}
     assert obj2.name == "KF_Smoke_Ball_002"
     assert obj1.name == "KF_Smoke_Ball_001"  # Not overwritten or renamed
+
+
+def test_copy_debug_info_operator():
+    """Verify copy debug info operator copies text to clipboard."""
+    op = KINEFIG_OT_copy_debug_info()
+    op.report = MagicMock()
+    context = MagicMock()
+    context.window_manager.clipboard = ""
+
+    res = op.execute(context)
+    assert res == {"FINISHED"}
+    assert "KineFig:" in context.window_manager.clipboard
+    op.report.assert_called_once()

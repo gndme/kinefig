@@ -14,6 +14,29 @@ from .naming import (
     is_temp_object,
     sanitize_filename,
 )
+from .build_info import (
+    VERSION,
+    COMMIT_SHA,
+    get_version_string,
+    get_short_sha,
+)
+from .logging import (
+    log_debug,
+    log_info,
+    log_warning,
+    log_error,
+    get_recent_logs,
+    get_recent_log_records,
+    get_last_error,
+    clear_logs,
+)
+from .diagnostics import (
+    get_environment_info,
+    collect_diagnostic_report,
+    format_clipboard_debug_info,
+    generate_github_issue_url,
+    BugReportSenderInterface,
+)
 
 __all__ = [
     "MM_TO_M",
@@ -33,4 +56,21 @@ __all__ = [
     "is_kinefig_object",
     "is_temp_object",
     "sanitize_filename",
+    "VERSION",
+    "COMMIT_SHA",
+    "get_version_string",
+    "get_short_sha",
+    "log_debug",
+    "log_info",
+    "log_warning",
+    "log_error",
+    "get_recent_logs",
+    "get_recent_log_records",
+    "get_last_error",
+    "clear_logs",
+    "get_environment_info",
+    "collect_diagnostic_report",
+    "format_clipboard_debug_info",
+    "generate_github_issue_url",
+    "BugReportSenderInterface",
 ]

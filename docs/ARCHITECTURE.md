@@ -33,24 +33,25 @@ UI
 4. **STL & Export Workflow (V1 Roadmap)**:
    - When exporting for 3D printing (slicers that assume 1 unit = 1 mm), the exporter will apply the necessary scaling factor (1000x) so that a 10 mm figure joint exports as exactly 10 mm in the slicer.
 
-## Future Composition Model
+## Diagnostic & Bug Reporting Architecture
 
-Complex figure articulation should be composed from reusable primitives.
+### Security Rule
+- **NO embedded tokens or secrets**: KineFig never embeds GitHub Personal Access Tokens, OAuth secrets, or write credentials in client add-on code.
+- **Privacy First**: Diagnostic collection only extracts safe system metadata (version, build SHA, Blender version, OS platform, unit settings, recent operational logs).
+- Never automatically collects or uploads: `.blend` files, mesh vertex coordinates, textures, character names, or arbitrary filesystem paths.
 
-Example:
+### Two-Tier Submission Architecture
+- **Mode 1 (V1 Foundation - Active)**:
+  - Generates prefilled GitHub Issue URLs targeting `.github/ISSUE_TEMPLATE/uat_bug.yml`.
+  - The tester authenticates directly on GitHub to submit.
+- **Mode 2 (Future Remote API - Extensible Interface)**:
+  - Defines `BugReportSenderInterface` in `core/diagnostics.py`.
+  - Future implementation forwards reports to an authenticated KineFig backend proxy that manages GitHub API credentials securely server-side.
 
-```text
-SHF-style Double-Hinge Knee
-=
-split geometry
-+ hinge primitive A
-+ hinge primitive B
-+ pin geometry
-+ clearance rules
-+ axis metadata
-+ range metadata
-+ optional aesthetic cover/seat
-```
+## Structured Logging Architecture
+- Centralized in `core/logging.py`.
+- In-memory bounded circular buffer (`deque(maxlen=100)`) preventing memory leaks during long modeling sessions.
+- Captures operational milestones: operator start, validated inputs, generated object IDs, cleanup, and caught exceptions.
 
 ## Suggested Packages
 
@@ -58,10 +59,12 @@ split geometry
 core/
   units.py
   validation.py
-  context.py
   naming.py
+  build_info.py
+  logging.py
+  diagnostics.py
   errors.py
-  compatibility.py
+  context.py
 
 geometry/
   primitives.py
@@ -74,6 +77,8 @@ geometry/
   collision.py
 
 operators/
+  smoke.py
+  diagnostics.py
   joints.py
   body.py
   test.py
