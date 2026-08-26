@@ -5,7 +5,7 @@ from addon.kinefig.core.units import MM_TO_M, mm_to_blender, blender_to_mm
 
 
 def test_mm_to_m_constant():
-    """Verify that MM_TO_M is exactly 0.001."""
+    """Verify that MM_TO_M is exactly 0.001 (1 Blender Unit = 1 meter)."""
     assert MM_TO_M == 0.001
 
 
@@ -53,6 +53,15 @@ def test_units_round_trip(val):
     m = mm_to_blender(val)
     back_to_mm = blender_to_mm(m)
     assert pytest.approx(back_to_mm) == val
+
+
+def test_units_independent_of_display():
+    """Verify that unit math is pure and invariant (does not depend on scene display units)."""
+    # 10 mm ball joint must strictly be 0.010 meters in Blender coordinates
+    diameter_mm = 10.0
+    radius_bu = mm_to_blender(diameter_mm / 2.0)
+    assert pytest.approx(radius_bu) == 0.005
+    assert pytest.approx(radius_bu * 2.0) == 0.010
 
 
 def test_units_invalid_type():

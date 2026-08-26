@@ -2,7 +2,7 @@
 
 import bpy
 from ..core.units import mm_to_blender
-from ..core.naming import format_object_name
+from ..core.naming import get_next_object_name
 
 
 class KINEFIG_OT_create_smoke_object(bpy.types.Operator):
@@ -22,7 +22,9 @@ class KINEFIG_OT_create_smoke_object(bpy.types.Operator):
         bpy.ops.mesh.primitive_uv_sphere_add(radius=radius_m)
         obj = context.active_object
         if obj:
-            obj.name = format_object_name("Smoke", detail="Ball", index=1)
+            # Allocate name deterministically without relying on Blender's fallback suffixes
+            existing_names = [o.name for o in bpy.data.objects if o != obj]
+            obj.name = get_next_object_name("Smoke", detail="Ball", existing_names=existing_names)
             obj["kf_type"] = "smoke"
             self.report({"INFO"}, f"Created test object: {obj.name}")
         return {"FINISHED"}

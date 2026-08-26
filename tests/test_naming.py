@@ -6,6 +6,8 @@ from addon.kinefig.core.naming import (
     PREFIX_TEMP,
     format_object_name,
     format_temp_name,
+    get_next_object_name,
+    get_next_temp_name,
     is_kinefig_object,
     is_temp_object,
     sanitize_filename,
@@ -27,6 +29,31 @@ def test_format_object_name_variations():
     assert format_object_name("FigurePart", "UpperArm", side="L") == "KF_FigurePart_L_UpperArm"
     assert format_object_name("FigurePart", "Forearm", side="r", index=1) == "KF_FigurePart_R_Forearm_001"
     assert format_object_name("Smoke", "Ball", index=1) == "KF_Smoke_Ball_001"
+
+
+def test_get_next_object_name_sequential():
+    """Verify deterministic sequential name allocation without relying on Blender suffix."""
+    # First creation when scene is empty
+    assert get_next_object_name("Smoke", detail="Ball", existing_names=[]) == "KF_Smoke_Ball_001"
+
+    # Second creation when 001 exists
+    existing = ["KF_Smoke_Ball_001", "Cube", "Camera"]
+    assert get_next_object_name("Smoke", detail="Ball", existing_names=existing) == "KF_Smoke_Ball_002"
+
+    # Third creation when 001 and 002 exist
+    existing = ["KF_Smoke_Ball_001", "KF_Smoke_Ball_002"]
+    assert get_next_object_name("Smoke", detail="Ball", existing_names=existing) == "KF_Smoke_Ball_003"
+
+    # With gap: if 001 and 003 exist, fills gap with 002
+    existing = ["KF_Smoke_Ball_001", "KF_Smoke_Ball_003"]
+    assert get_next_object_name("Smoke", detail="Ball", existing_names=existing) == "KF_Smoke_Ball_002"
+
+
+def test_get_next_temp_name_sequential():
+    """Verify sequential temporary object naming."""
+    assert get_next_temp_name("Cutter", existing_names=[]) == "_KF_TMP_Cutter_001"
+    existing = ["_KF_TMP_Cutter_001"]
+    assert get_next_temp_name("Cutter", existing_names=existing) == "_KF_TMP_Cutter_002"
 
 
 def test_format_temp_name():

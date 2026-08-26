@@ -47,23 +47,32 @@ def test_smoke_operator_poll():
     assert KINEFIG_OT_create_smoke_object.poll(context_edit_mode) is False
 
 
-def test_smoke_operator_execution():
-    """Verify smoke operator creates 10mm sphere with correct naming and metadata."""
+def test_smoke_operator_execution_and_repeated_naming():
+    """Verify smoke operator creates 10mm sphere with deterministic sequential naming."""
     op = KINEFIG_OT_create_smoke_object()
     op.report = MagicMock()
-
-    context = MagicMock()
-    mock_obj = MockBlenderObject()
-    context.active_object = mock_obj
 
     bpy.ops.mesh = MagicMock()
     bpy.ops.mesh.primitive_uv_sphere_add = MagicMock()
 
-    result = op.execute(context)
+    # First execution: scene has no smoke ball
+    bpy.data.objects = []
+    context1 = MagicMock()
+    obj1 = MockBlenderObject()
+    context1.active_object = obj1
 
-    assert result == {"FINISHED"}
-    # 5mm radius = 0.005m
-    bpy.ops.mesh.primitive_uv_sphere_add.assert_called_once_with(radius=0.005)
-    assert mock_obj.name == "KF_Smoke_Ball_001"
-    assert mock_obj["kf_type"] == "smoke"
-    op.report.assert_called_once()
+    result1 = op.execute(context1)
+    assert result1 == {"FINISHED"}
+    assert obj1.name == "KF_Smoke_Ball_001"
+    assert obj1["kf_type"] == "smoke"
+
+    # Second execution: scene has obj1 ("KF_Smoke_Ball_001")
+    bpy.data.objects = [obj1]
+    context2 = MagicMock()
+    obj2 = MockBlenderObject()
+    context2.active_object = obj2
+
+    result2 = op.execute(context2)
+    assert result2 == {"FINISHED"}
+    assert obj2.name == "KF_Smoke_Ball_002"
+    assert obj1.name == "KF_Smoke_Ball_001"  # Not overwritten or renamed

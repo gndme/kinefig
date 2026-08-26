@@ -14,6 +14,25 @@ UI
 → Blender Data/BMesh APIs
 ```
 
+## Unit Contract
+
+1. **Internal Representation**:
+   - KineFig geometry internally uses Blender standard coordinates where:
+     `1 Blender Unit (BU) = 1 meter`.
+   - All mesh vertex positions, primitive radii, and distances are computed using:
+     `blender_coord = mm_value / 1000.0` (centralized in `core.units.mm_to_blender`).
+
+2. **User Interface**:
+   - All user-facing dimensions, inputs, and readout panels are strictly in **millimeters (mm)**.
+
+3. **Scene Protection**:
+   - KineFig must **NOT** alter user scene unit settings (`scene.unit_settings.system`, `scene.unit_settings.scale_length`, or `scene.unit_settings.length_unit`).
+   - Geometry calculations are pure and do not depend on the user's display unit settings.
+   - If a user changes scene unit scale, mesh vertex coordinates remain internally consistent in raw Blender metric units.
+
+4. **STL & Export Workflow (V1 Roadmap)**:
+   - When exporting for 3D printing (slicers that assume 1 unit = 1 mm), the exporter will apply the necessary scaling factor (1000x) so that a 10 mm figure joint exports as exactly 10 mm in the slicer.
+
 ## Future Composition Model
 
 Complex figure articulation should be composed from reusable primitives.

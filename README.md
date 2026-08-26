@@ -33,7 +33,7 @@ SPEC
 
 ## Quick Start for Developers
 
-### Run Automated Tests
+### Run Automated Unit Tests
 
 ```bash
 python -m pytest -v
@@ -47,6 +47,18 @@ python scripts/build_extension.py
 
 Outputs deterministic extension package to `dist/kinefig-<version>.zip`.
 
+### Run Official Blender 4.2 Extension Validation (if Blender installed)
+
+```bash
+blender --command extension validate dist/kinefig-0.0.1.zip
+```
+
+### Run Real Blender Runtime Integration Test (if Blender installed)
+
+```bash
+blender --background --factory-startup --python tests/test_blender_runtime.py
+```
+
 ## Status
 
-**PR-001 Foundation Completed.** Ready for independent review.
+**PR-001 Foundation Completed.** Updated and ready for re-review.

@@ -28,7 +28,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest toml
 
-      - name: Run Automated Tests
+      - name: Run Unit Tests (Pytest)
         run: |
           python -m pytest -v
 
@@ -36,7 +36,7 @@ jobs:
         run: |
           python scripts/build_extension.py
 
-      - name: Verify Extension Package
+      - name: Verify Extension Package Structure
         run: |
           python -c "
           import zipfile
@@ -46,6 +46,25 @@ jobs:
               assert '__init__.py' in files, '__init__.py missing from zip root'
               print('Package verification passed. Total files:', len(files))
           "
+
+      - name: Install Blender 4.2
+        if: matrix.python-version == '3.11'
+        run: |
+          BLENDER_URL="https://download.blender.org/release/Blender4.2/blender-4.2.0-linux-x64.tar.xz"
+          mkdir -p $HOME/blender
+          curl -sSL $BLENDER_URL | tar -xJ -C $HOME/blender --strip-components=1
+          echo "$HOME/blender" >> $GITHUB_PATH
+
+      - name: Official Blender Extension Validation
+        if: matrix.python-version == '3.11'
+        run: |
+          blender --version
+          blender --command extension validate dist/kinefig-0.0.1.zip
+
+      - name: Real Blender Runtime Integration Test
+        if: matrix.python-version == '3.11'
+        run: |
+          blender --background --factory-startup --python tests/test_blender_runtime.py
 
       - name: Upload Extension Artifact
         if: matrix.python-version == '3.11'
