@@ -98,9 +98,18 @@ Check:
 - Creation at 3D Cursor location with local joint axis along +Z;
 - Sequential naming (`KF_Joint_Ball_001`, `KF_Joint_Ball_002`...);
 - Interactive tweakability in Operator Redo panel (F9);
-- Undo removes generated joint without leaving temporary helper objects;
 - Visual acceptability for collectible articulated figures;
 - *Note*: Matching female socket cavity will be added in PR-003.
+
+**Interactive Undo Verification (Mandatory 3D Specialist Step)**:
+1. Open a scene with an unrelated test object (e.g. a reference figure limb or default cube).
+2. Click **Create Ball Joint** in the KineFig sidebar panel (creates `KF_Joint_Ball_001`).
+3. Press **Ctrl+Z** (or `Edit > Undo`).
+4. **Expected**:
+   - `KF_Joint_Ball_001` immediately and cleanly disappears from the 3D Viewport and Outliner;
+   - The unrelated reference object remains completely untouched;
+   - No temporary helper objects or mesh datablocks (`_KF_TMP_...`) are left behind.
+
 
 
 ### KF-UAT-JOINT-002 — Double Ball

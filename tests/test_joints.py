@@ -112,15 +112,21 @@ def test_ball_joint_transactional_rollback_on_boolean_failure():
     context.collection = MagicMock()
     context.scene.cursor.location = (0.0, 0.0, 0.0)
 
-    # Trigger failure via controlled test hook
-    with pytest.raises(KineFigGeometryError, match="Injected Boolean failure"):
-        create_ball_joint_geometry(
-            context=context,
-            ball_diameter_mm=5.0,
-            stem_diameter_mm=3.0,
-            stem_length_mm=5.0,
-            _inject_boolean_failure=True,
-        )
+    from unittest.mock import patch
+
+    # Trigger failure via internal seam patch
+    with patch(
+        "addon.kinefig.geometry.joints._evaluate_boolean_union",
+        side_effect=KineFigGeometryError("Injected Boolean failure for transactional rollback test"),
+    ):
+        with pytest.raises(KineFigGeometryError, match="Injected Boolean failure"):
+            create_ball_joint_geometry(
+                context=context,
+                ball_diameter_mm=5.0,
+                stem_diameter_mm=3.0,
+                stem_length_mm=5.0,
+            )
+
 
     # Assert that no partial joint or temp objects remain
     remaining_names = [o.name for o in bpy.data.objects]

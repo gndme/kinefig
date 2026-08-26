@@ -1,7 +1,6 @@
 """Parametric joint geometry generators for KineFig."""
 
 from typing import Optional, Tuple, Any
-from unittest.mock import MagicMock
 import bpy
 import bmesh
 
@@ -13,6 +12,36 @@ from ..core.errors import KineFigError, KineFigGeometryError
 from ..core.logging import log_info, log_error
 
 
+def _evaluate_boolean_union(
+    context: Any, joint_obj: bpy.types.Object, mod: bpy.types.Modifier
+) -> bpy.types.Mesh:
+    """Internal seam: evaluates the Boolean modifier via depsgraph and returns evaluated mesh.
+
+    This helper isolates dependency graph evaluation and mesh extraction,
+    providing a safe monkeypatch seam for testing failure/rollback without
+    exposing test flags in public product APIs.
+    """
+    if not hasattr(context, "evaluated_depsgraph_get"):
+        raise KineFigGeometryError("Context has no evaluated_depsgraph_get method")
+
+    depsgraph = context.evaluated_depsgraph_get()
+    eval_obj = joint_obj.evaluated_get(depsgraph)
+    eval_mesh = bpy.data.meshes.new_from_object(eval_obj)
+
+    if eval_mesh is None:
+        raise KineFigGeometryError("Boolean union failed to generate evaluated mesh")
+
+    try:
+        vert_count = len(eval_mesh.vertices)
+    except (TypeError, AttributeError):
+        raise KineFigGeometryError("Evaluated mesh has invalid or missing vertices attribute")
+
+    if vert_count == 0:
+        raise KineFigGeometryError("Boolean union produced empty mesh geometry (0 vertices)")
+
+    return eval_mesh
+
+
 def create_ball_joint_geometry(
     context: Any,
     ball_diameter_mm: float = 5.0,
@@ -21,7 +50,6 @@ def create_ball_joint_geometry(
     segments: int = 32,
     rings: int = 16,
     location: Optional[Tuple[float, float, float]] = None,
-    _inject_boolean_failure: bool = False,
 ) -> bpy.types.Object:
     """Create a parametric male ball joint (sphere + cylindrical stem) as a single manifold mesh.
 
@@ -76,47 +104,51 @@ def create_ball_joint_geometry(
     mod: Optional[bpy.types.Modifier] = None
 
     try:
-        # 3. Create initial sphere mesh datablock
+        # 3. Create initial sphere mesh datablock with guarded BMesh lifecycle
         sphere_mesh = bpy.data.meshes.new("KF_Joint_Ball_Mesh")
         bm_sphere = bmesh.new()
-        bmesh.ops.create_uvsphere(
-            bm_sphere,
-            u_segments=int(segments),
-            v_segments=int(rings),
-            radius=ball_radius_m,
-        )
-        bmesh.ops.translate(
-            bm_sphere,
-            vec=(0.0, 0.0, stem_length_m),
-            verts=bm_sphere.verts,
-        )
-        bm_sphere.to_mesh(sphere_mesh)
-        bm_sphere.free()
+        try:
+            bmesh.ops.create_uvsphere(
+                bm_sphere,
+                u_segments=int(segments),
+                v_segments=int(rings),
+                radius=ball_radius_m,
+            )
+            bmesh.ops.translate(
+                bm_sphere,
+                vec=(0.0, 0.0, stem_length_m),
+                verts=bm_sphere.verts,
+            )
+            bm_sphere.to_mesh(sphere_mesh)
+        finally:
+            bm_sphere.free()
 
         # 4. Allocate deterministic object name
         existing_names = [o.name for o in bpy.data.objects]
         object_name = get_next_object_name("Joint", detail="Ball", existing_names=existing_names)
         joint_obj = bpy.data.objects.new(object_name, sphere_mesh)
 
-        # 5. Create temporary stem cylinder
+        # 5. Create temporary stem cylinder with guarded BMesh lifecycle
         temp_mesh_name = format_temp_name("Stem_Mesh")
         temp_stem_mesh = bpy.data.meshes.new(temp_mesh_name)
         bm_cyl = bmesh.new()
-        bmesh.ops.create_cone(
-            bm_cyl,
-            cap_ends=True,
-            segments=int(segments),
-            radius1=stem_radius_m,
-            radius2=stem_radius_m,
-            depth=stem_length_m,
-        )
-        bmesh.ops.translate(
-            bm_cyl,
-            vec=(0.0, 0.0, stem_length_m / 2.0),
-            verts=bm_cyl.verts,
-        )
-        bm_cyl.to_mesh(temp_stem_mesh)
-        bm_cyl.free()
+        try:
+            bmesh.ops.create_cone(
+                bm_cyl,
+                cap_ends=True,
+                segments=int(segments),
+                radius1=stem_radius_m,
+                radius2=stem_radius_m,
+                depth=stem_length_m,
+            )
+            bmesh.ops.translate(
+                bm_cyl,
+                vec=(0.0, 0.0, stem_length_m / 2.0),
+                verts=bm_cyl.verts,
+            )
+            bm_cyl.to_mesh(temp_stem_mesh)
+        finally:
+            bm_cyl.free()
 
         temp_obj_name = format_temp_name("Stem_Obj")
         temp_stem_obj = bpy.data.objects.new(temp_obj_name, temp_stem_mesh)
@@ -132,26 +164,8 @@ def create_ball_joint_geometry(
         mod.object = temp_stem_obj
         mod.solver = "EXACT"
 
-        # Controlled test hook for validating failure/rollback behavior
-        if _inject_boolean_failure:
-            raise KineFigGeometryError("Injected Boolean failure for transactional rollback test")
-
-        # Evaluate modifier via dependency graph
-        if not hasattr(context, "evaluated_depsgraph_get"):
-            raise KineFigGeometryError("Context has no evaluated_depsgraph_get method")
-
-        depsgraph = context.evaluated_depsgraph_get()
-        eval_obj = joint_obj.evaluated_get(depsgraph)
-        eval_mesh = bpy.data.meshes.new_from_object(eval_obj)
-
-        if eval_mesh is None:
-            raise KineFigGeometryError("Boolean union failed to generate evaluated mesh")
-
-        # Check vertex count if not a mock object
-        verts = getattr(eval_mesh, "vertices", None)
-        if verts is not None and not isinstance(verts, MagicMock):
-            if len(verts) == 0:
-                raise KineFigGeometryError("Boolean union produced empty mesh geometry (0 vertices)")
+        # Evaluate modifier through internal seam
+        eval_mesh = _evaluate_boolean_union(context, joint_obj, mod)
 
         # Verified evaluated mesh: now commit to joint_obj
         joint_obj.modifiers.remove(mod)
