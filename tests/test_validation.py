@@ -354,3 +354,32 @@ def test_validate_double_ball_parameters_invalid_tessellation(bad_seg, bad_ring)
         validate_double_ball_parameters(5.0, 5.0, 3.0, 8.0, segments=bad_seg, rings=bad_ring)
 
 
+def test_validate_double_ball_parameters_center_distance_boundaries():
+    """Verify validate_double_ball_parameters enforces center_distance >= (ball_a + ball_b)/2.
+
+    Boundary tests:
+    - exact minimum -> PASS
+    - slightly below minimum -> FAIL
+    - significantly below minimum (e.g. 0.1mm) -> FAIL
+    """
+    # Exact minimums: touching spheres at center_distance = r_a + r_b
+    validate_double_ball_parameters(5.0, 5.0, 3.0, 5.0)  # 2.5 + 2.5 = 5.0mm
+    validate_double_ball_parameters(4.0, 6.0, 2.5, 5.0)  # 2.0 + 3.0 = 5.0mm
+    validate_double_ball_parameters(3.5, 4.5, 2.0, 4.0)  # 1.75 + 2.25 = 4.0mm
+
+    # Slightly below minimum -> must raise KineFigValidationError
+    with pytest.raises(KineFigValidationError, match="must be at least the sum of ball radii"):
+        validate_double_ball_parameters(5.0, 5.0, 3.0, 4.999)
+
+    with pytest.raises(KineFigValidationError, match="must be at least the sum of ball radii"):
+        validate_double_ball_parameters(4.0, 6.0, 2.5, 4.99)
+
+    # Significantly below minimum -> must raise KineFigValidationError
+    with pytest.raises(KineFigValidationError, match="must be at least the sum of ball radii"):
+        validate_double_ball_parameters(5.0, 5.0, 3.0, 0.1)
+
+    with pytest.raises(KineFigValidationError, match="must be at least the sum of ball radii"):
+        validate_double_ball_parameters(4.0, 6.0, 2.5, 2.0)
+
+
+

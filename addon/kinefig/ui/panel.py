@@ -114,17 +114,23 @@ class KINEFIG_PT_main(bpy.types.Panel):
             db_col.prop(db_props, "stem_diameter_mm", text="Stem Dia")
             db_col.prop(db_props, "center_distance_mm", text="Center Dist")
 
-            # Center distance semantics readout
-            total_z = (
-                db_props.center_distance_mm
-                + (db_props.ball_a_diameter_mm + db_props.ball_b_diameter_mm) / 2.0
-            )
+            # Center distance semantics & overlap policy readout
+            min_dist = (db_props.ball_a_diameter_mm + db_props.ball_b_diameter_mm) / 2.0
+            total_z = db_props.center_distance_mm + min_dist
+
             db_readout = db_box.row()
             db_readout.scale_y = 0.8
-            db_readout.label(
-                text=f"Total Z: {total_z:.2f} mm (dist: {db_props.center_distance_mm:.1f}mm)",
-                icon="INFO",
-            )
+            if db_props.center_distance_mm < min_dist:
+                db_readout.alert = True
+                db_readout.label(
+                    text=f"Overlap! Min Dist: {min_dist:.2f} mm",
+                    icon="ERROR",
+                )
+            else:
+                db_readout.label(
+                    text=f"Total Z: {total_z:.2f} mm (min: {min_dist:.2f} mm)",
+                    icon="INFO",
+                )
 
             db_op = db_box.operator(
                 "kinefig.create_double_ball_joint",

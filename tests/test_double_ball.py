@@ -143,3 +143,55 @@ def test_double_ball_multi_stage_rollback_on_stage2_failure():
     ):
         with pytest.raises(KineFigGeometryError, match="Stage 2"):
             create_double_ball_geometry(context)
+
+
+def test_double_ball_post_evaluation_rollback_stage1():
+    """Regression A: Verify that if failure occurs after eval_mesh_1 exists but before commit completes,
+    eval_mesh_1 is deterministically rolled back with zero leaks."""
+    baseline_objs = set(bpy.data.objects.keys())
+    baseline_meshes = set(bpy.data.meshes.keys())
+
+    context = MagicMock()
+    context.collection = MagicMock()
+
+    with patch(
+        "addon.kinefig.geometry.joints._commit_evaluated_mesh",
+        side_effect=KineFigGeometryError("Injected Stage 1 post-evaluation commit failure"),
+    ):
+        with pytest.raises(KineFigGeometryError, match="Stage 1 post-evaluation"):
+            create_double_ball_geometry(context)
+
+    assert set(bpy.data.objects.keys()) == baseline_objs, "Objects leaked after Stage 1 post-eval failure!"
+    assert set(bpy.data.meshes.keys()) == baseline_meshes, "Meshes leaked after Stage 1 post-eval failure!"
+    temp_objs = [name for name in bpy.data.objects.keys() if is_temp_object(name)]
+    assert len(temp_objs) == 0, f"Leaked temp objects: {temp_objs}"
+
+
+def test_double_ball_post_evaluation_rollback_stage2():
+    """Regression B: Verify that if failure occurs after eval_mesh_2 exists but before final commit completes,
+    eval_mesh_2 and intermediate meshes are deterministically rolled back with zero leaks."""
+    baseline_objs = set(bpy.data.objects.keys())
+    baseline_meshes = set(bpy.data.meshes.keys())
+
+    context = MagicMock()
+    context.collection = MagicMock()
+
+    from addon.kinefig.geometry.joints import _commit_evaluated_mesh
+
+    def commit_side_effect(eval_mesh, target_mesh, stage=1):
+        if stage == 2:
+            raise KineFigGeometryError("Injected Stage 2 post-evaluation commit failure")
+        _commit_evaluated_mesh(eval_mesh, target_mesh, stage)
+
+    with patch(
+        "addon.kinefig.geometry.joints._commit_evaluated_mesh",
+        side_effect=commit_side_effect,
+    ):
+        with pytest.raises(KineFigGeometryError, match="Stage 2 post-evaluation"):
+            create_double_ball_geometry(context)
+
+    assert set(bpy.data.objects.keys()) == baseline_objs, "Objects leaked after Stage 2 post-eval failure!"
+    assert set(bpy.data.meshes.keys()) == baseline_meshes, "Meshes leaked after Stage 2 post-eval failure!"
+    temp_objs = [name for name in bpy.data.objects.keys() if is_temp_object(name)]
+    assert len(temp_objs) == 0, f"Leaked temp objects: {temp_objs}"
+

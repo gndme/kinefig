@@ -82,7 +82,7 @@ class KineFigDoubleBallJointProperties(bpy.types.PropertyGroup):
 
     center_distance_mm: bpy.props.FloatProperty(
         name="Center Distance (mm)",
-        description="Distance between Ball A center and Ball B center along local +Z axis",
+        description="Distance between Ball A center and Ball B center along local +Z axis (must be >= (Ball A + Ball B) / 2 to preserve distinct ball lobes)",
         default=8.0,
         min=0.1,
         max=200.0,

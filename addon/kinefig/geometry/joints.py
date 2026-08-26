@@ -50,6 +50,24 @@ def _evaluate_double_ball_union(
     )
 
 
+def _commit_evaluated_mesh(
+    eval_mesh: bpy.types.Mesh,
+    target_mesh: bpy.types.Mesh,
+    stage: int = 1,
+) -> None:
+    """Internal seam: copies geometry from evaluated mesh into target mesh datablock.
+
+    This helper provides a safe test seam for verifying post-evaluation rollback
+    without adding test flags to production APIs.
+    """
+    bm_copy = bmesh.new()
+    try:
+        bm_copy.from_mesh(eval_mesh)
+        bm_copy.to_mesh(target_mesh)
+    finally:
+        bm_copy.free()
+
+
 def create_ball_joint_geometry(
     context: Any,
     ball_diameter_mm: float = 5.0,
@@ -334,6 +352,8 @@ def create_double_ball_geometry(
 
     created_objects = []
     created_meshes = []
+    eval_mesh_1 = None
+    eval_mesh_2 = None
 
     target_col = None
     if hasattr(context, "collection") and context.collection is not None:
@@ -394,6 +414,7 @@ def create_double_ball_geometry(
         mod_stem.object = temp_stem_obj
 
         eval_mesh_1 = _evaluate_double_ball_union(context, joint_obj, mod_stem, stage=1)
+        created_meshes.append(eval_mesh_1)
 
         # Remove Stage 1 modifier and temporary stem object
         joint_obj.modifiers.remove(mod_stem)
@@ -412,14 +433,14 @@ def create_double_ball_geometry(
         stage1_mesh = bpy.data.meshes.new(name=f"{joint_mesh_name}_Stage1")
         created_meshes.append(stage1_mesh)
 
-        bm_copy1 = bmesh.new()
-        try:
-            bm_copy1.from_mesh(eval_mesh_1)
-            bm_copy1.to_mesh(stage1_mesh)
-        finally:
-            bm_copy1.free()
+        _commit_evaluated_mesh(eval_mesh_1, stage1_mesh, stage=1)
 
-        bpy.data.meshes.remove(eval_mesh_1, do_unlink=True)
+        # Explicitly remove eval_mesh_1 once safely committed
+        if eval_mesh_1 in created_meshes:
+            created_meshes.remove(eval_mesh_1)
+        if hasattr(eval_mesh_1, "name") and eval_mesh_1.name in bpy.data.meshes:
+            bpy.data.meshes.remove(eval_mesh_1, do_unlink=True)
+        eval_mesh_1 = None
 
         # Swap joint_obj data to stage1_mesh and remove initial sphere mesh
         joint_obj.data = stage1_mesh
@@ -457,6 +478,7 @@ def create_double_ball_geometry(
         mod_ball_b.object = temp_ball_b_obj
 
         eval_mesh_2 = _evaluate_double_ball_union(context, joint_obj, mod_ball_b, stage=2)
+        created_meshes.append(eval_mesh_2)
 
         # Remove Stage 2 modifier and temporary Ball B object
         joint_obj.modifiers.remove(mod_ball_b)
@@ -475,14 +497,14 @@ def create_double_ball_geometry(
         final_mesh = bpy.data.meshes.new(name=joint_mesh_name)
         created_meshes.append(final_mesh)
 
-        bm_copy2 = bmesh.new()
-        try:
-            bm_copy2.from_mesh(eval_mesh_2)
-            bm_copy2.to_mesh(final_mesh)
-        finally:
-            bm_copy2.free()
+        _commit_evaluated_mesh(eval_mesh_2, final_mesh, stage=2)
 
-        bpy.data.meshes.remove(eval_mesh_2, do_unlink=True)
+        # Explicitly remove eval_mesh_2 once safely committed
+        if eval_mesh_2 in created_meshes:
+            created_meshes.remove(eval_mesh_2)
+        if hasattr(eval_mesh_2, "name") and eval_mesh_2.name in bpy.data.meshes:
+            bpy.data.meshes.remove(eval_mesh_2, do_unlink=True)
+        eval_mesh_2 = None
 
         # Swap joint_obj data to final_mesh and remove stage1_mesh
         joint_obj.data = final_mesh
@@ -544,10 +566,19 @@ def create_double_ball_geometry(
             except Exception:
                 pass
 
+        # Transactional rollback: remove any uncommitted evaluated meshes
+        for em in (eval_mesh_1, eval_mesh_2):
+            if em is not None:
+                try:
+                    if hasattr(em, "name") and em.name in bpy.data.meshes:
+                        bpy.data.meshes.remove(em, do_unlink=True)
+                except Exception:
+                    pass
+
         # Transactional rollback: remove all newly created meshes
         for mesh in list(created_meshes):
             try:
-                if mesh.name in bpy.data.meshes:
+                if mesh and hasattr(mesh, "name") and mesh.name in bpy.data.meshes:
                     bpy.data.meshes.remove(mesh, do_unlink=True)
             except Exception:
                 pass

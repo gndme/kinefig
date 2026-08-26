@@ -69,7 +69,8 @@ blender --background --factory-startup --python tests/test_blender_runtime.py
 - **PR-003 Parametric Female Ball Socket Cavity Core**: Merged to `main`.
 - **PR-004 Parametric Double Ball / Dumbbell Joint Core (In Progress)**:
   - Creates a single coherent printable joint solid with Ball A at origin, connecting neck stem along +Z, and Ball B at center distance along +Z.
-  - Multi-stage Exact Boolean union eliminating internal overlapping geometry.
-  - Full multi-stage transactional rollback on any stage failure.
+  - Multi-stage Exact Boolean union eliminating internal overlapping geometry, guaranteed 1 connected surface component.
+  - Full multi-stage transactional rollback covering Boolean evaluation and post-evaluation commit windows with zero resource leaks.
+  - Center distance non-overlap contract: `center_distance >= (ball_a + ball_b) / 2.0` preserving two distinct articulation lobes.
   - *Known Limitation*: PR-004 provides male double-ball joint geometry. Socket clearance is applied to matching female sockets, not by altering nominal ball dimensions.
 

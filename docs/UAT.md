@@ -148,7 +148,9 @@ Create a parametric double-ball / dumbbell joint solid suitable for neck, wrist,
 Check:
 - Single coherent solid: Ball A + central stem + Ball B merged into a single watertight closed 2-manifold object with no internal intersecting faces;
 - Stem proportions: stem diameter is visually narrower than both balls (`stem_diameter < min(ball_a, ball_b)`);
-- Center distance verification:
+- Center distance & non-overlap policy:
+  - Minimum center distance is the sum of ball radii: `center_distance >= (ball_a + ball_b) / 2.0` (e.g. 5.0mm for 5mm+5mm balls);
+  - Entering a distance less than this minimum triggers a UI warning and fails operator validation with a clear error without scene corruption;
   - Default parameters (Ball A = 5.0mm, Ball B = 5.0mm, Stem = 3.0mm, Center Distance = 8.0mm);
   - Total joint height along Z is 13.0mm (from -2.5mm to +10.5mm);
   - Center of Ball A is at local `(0, 0, 0)`; center of Ball B is at `(0, 0, 8.0mm)`;

@@ -417,17 +417,37 @@ def run_tests():
         assert math.isclose(db_dim.z, 0.013, abs_tol=0.0002), f"Double Ball Z dim {db_dim.z} != 0.013m"
 
         # Manifold quality assertions
+        def count_connected_components(bm) -> int:
+            unvisited_faces = set(bm.faces)
+            if not unvisited_faces:
+                return 0 if not bm.verts else 1
+            components = 0
+            while unvisited_faces:
+                components += 1
+                start_face = unvisited_faces.pop()
+                queue = [start_face]
+                while queue:
+                    current = queue.pop()
+                    for edge in current.edges:
+                        for linked_face in edge.link_faces:
+                            if linked_face in unvisited_faces:
+                                unvisited_faces.remove(linked_face)
+                                queue.append(linked_face)
+            return components
+
         bm_db = bmesh.new()
         bm_db.from_mesh(db_obj.data)
         non_manifold_e = [e for e in bm_db.edges if not e.is_manifold]
         boundary_e = [e for e in bm_db.edges if e.is_boundary]
         vol = bm_db.calc_volume()
+        comp_count = count_connected_components(bm_db)
         bm_db.free()
 
         assert len(non_manifold_e) == 0, f"Double Ball has {len(non_manifold_e)} non-manifold edges"
         assert len(boundary_e) == 0, f"Double Ball has {len(boundary_e)} boundary edges"
         assert vol > 0.0, f"Double Ball volume must be positive, got {vol}"
-        print(f"  -> PASSED: Double Ball is watertight 2-manifold (non-manifold=0, boundaries=0, volume={vol:.2e}m³)")
+        assert comp_count == 1, f"Double Ball should be a single coherent solid, got {comp_count} components"
+        print(f"  -> PASSED: Double Ball is watertight 2-manifold (non-manifold=0, boundaries=0, volume={vol:.2e}m³, components=1)")
 
         # 14. Testing Asymmetric Double Ball Joint (PR-004)
         print("\n[14/16] Testing asymmetric Double Ball joint (Ball A=4mm, Ball B=6mm, Stem=2.5mm, Dist=8mm)...")
@@ -459,7 +479,13 @@ def run_tests():
         max_z_mm = max(verts_z) * 1000.0
         assert math.isclose(min_z_mm, -2.0, abs_tol=0.2), f"Ball A bottom expected -2.0mm, got {min_z_mm:.2f}mm"
         assert math.isclose(max_z_mm, 11.0, abs_tol=0.2), f"Ball B top expected 11.0mm, got {max_z_mm:.2f}mm"
-        print(f"  -> PASSED: Asymmetric Double Ball orientation verified: Ball A bottom={min_z_mm:.2f}mm, Ball B top={max_z_mm:.2f}mm")
+
+        bm_asym = bmesh.new()
+        bm_asym.from_mesh(asym_obj.data)
+        comp_asym = count_connected_components(bm_asym)
+        bm_asym.free()
+        assert comp_asym == 1, f"Asymmetric Double Ball should be a single coherent solid, got {comp_asym} components"
+        print(f"  -> PASSED: Asymmetric Double Ball orientation verified: Ball A bottom={min_z_mm:.2f}mm, Ball B top={max_z_mm:.2f}mm, components=1")
 
         # 15. Testing Multi-stage Transactional Rollback on Boolean Failure
         print("\n[15/16] Testing multi-stage transactional rollback on Boolean failure...")
@@ -519,6 +545,82 @@ def run_tests():
         assert set(bpy.data.objects.keys()) == baseline_db_objects, "Objects leaked after Stage 2 failure!"
         assert set(bpy.data.meshes.keys()) == baseline_db_meshes, "Meshes leaked after Stage 2 failure!"
         print("  -> PASSED: Stage 2 failure rolled back cleanly, intermediate Stage 1 mesh deleted")
+
+        # Regression A: Post-evaluation Stage 1 commit failure test
+        print("  -> Testing Regression A: Stage 1 post-evaluation commit failure rollback...")
+        orig_commit = joints_mod._commit_evaluated_mesh
+
+        def fail_commit_1(eval_mesh, target_mesh, stage=1):
+            if stage == 1:
+                raise KineFigGeometryError("Injected Stage 1 post-evaluation commit failure")
+            return orig_commit(eval_mesh, target_mesh, stage)
+
+        joints_mod._commit_evaluated_mesh = fail_commit_1
+        post_eval1_failed = False
+        try:
+            bpy.ops.kinefig.create_double_ball_joint(
+                ball_a_diameter_mm=5.0,
+                ball_b_diameter_mm=5.0,
+                stem_diameter_mm=3.0,
+                center_distance_mm=8.0,
+            )
+        except RuntimeError:
+            post_eval1_failed = True
+        finally:
+            joints_mod._commit_evaluated_mesh = orig_commit
+
+        assert post_eval1_failed, "Expected RuntimeError on Stage 1 post-eval failure"
+        assert set(bpy.data.objects.keys()) == baseline_db_objects, "Objects leaked after Stage 1 post-eval failure!"
+        assert set(bpy.data.meshes.keys()) == baseline_db_meshes, "Meshes leaked after Stage 1 post-eval failure!"
+        temp_objs = [name for name in bpy.data.objects.keys() if is_temp_object(name)]
+        assert len(temp_objs) == 0, f"Leaked temp objects: {temp_objs}"
+        print("  -> PASSED: Stage 1 post-evaluation failure rolled back cleanly, eval_mesh_1 purged with zero leaks")
+
+        # Regression B: Post-evaluation Stage 2 commit failure test
+        print("  -> Testing Regression B: Stage 2 post-evaluation commit failure rollback...")
+        def fail_commit_2(eval_mesh, target_mesh, stage=1):
+            if stage == 2:
+                raise KineFigGeometryError("Injected Stage 2 post-evaluation commit failure")
+            return orig_commit(eval_mesh, target_mesh, stage)
+
+        joints_mod._commit_evaluated_mesh = fail_commit_2
+        post_eval2_failed = False
+        try:
+            bpy.ops.kinefig.create_double_ball_joint(
+                ball_a_diameter_mm=5.0,
+                ball_b_diameter_mm=5.0,
+                stem_diameter_mm=3.0,
+                center_distance_mm=8.0,
+            )
+        except RuntimeError:
+            post_eval2_failed = True
+        finally:
+            joints_mod._commit_evaluated_mesh = orig_commit
+
+        assert post_eval2_failed, "Expected RuntimeError on Stage 2 post-eval failure"
+        assert set(bpy.data.objects.keys()) == baseline_db_objects, "Objects leaked after Stage 2 post-eval failure!"
+        assert set(bpy.data.meshes.keys()) == baseline_db_meshes, "Meshes leaked after Stage 2 post-eval failure!"
+        temp_objs = [name for name in bpy.data.objects.keys() if is_temp_object(name)]
+        assert len(temp_objs) == 0, f"Leaked temp objects: {temp_objs}"
+        print("  -> PASSED: Stage 2 post-evaluation failure rolled back cleanly, eval_mesh_2 & Stage 1 mesh purged with zero leaks")
+
+        # Center Distance overlap policy test (center_distance < (ball_a + ball_b)/2)
+        print("  -> Testing center distance overlap policy rejection in operator...")
+        overlap_failed = False
+        try:
+            bpy.ops.kinefig.create_double_ball_joint(
+                ball_a_diameter_mm=5.0,
+                ball_b_diameter_mm=5.0,
+                stem_diameter_mm=3.0,
+                center_distance_mm=4.0,  # Invalid: 4.0 < 5.0mm
+            )
+        except RuntimeError:
+            overlap_failed = True
+
+        assert overlap_failed, "Expected operator error when center_distance < sum of radii"
+        assert set(bpy.data.objects.keys()) == baseline_db_objects, "Objects leaked after overlap rejection!"
+        assert set(bpy.data.meshes.keys()) == baseline_db_meshes, "Meshes leaked after overlap rejection!"
+        print("  -> PASSED: Center distance overlap strictly rejected without scene mutation")
 
         # 16. Test Undo State Transition (Sockets & Double Ball)
         print("\n[16/16] Testing Undo state transition for Double Ball joints...")

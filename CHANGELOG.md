@@ -4,11 +4,11 @@
 - Parametric Double Ball / Dumbbell Joint generator (`geometry/joints.py`): creates a single coherent, watertight 2-manifold printable solid combining Ball A at local origin, connecting stem along +Z, and Ball B at center distance along +Z.
 - Multi-stage Exact Boolean union eliminating internal overlapping geometry between spheres and stem.
 - Reusable Boolean evaluation helper (`geometry/boolean.py`): centralized depsgraph evaluation and mesh extraction with strict `KineFigGeometryError` diagnostics.
-- Parameter validation (`validate_double_ball_parameters`): enforces positive finite dimensions, `stem_diameter < min(ball_a, ball_b)`, `center_distance > 0`, and strict integer tessellation bounds.
-- Multi-stage transactional rollback: handles failures at Stage 1 (Ball A + Stem) or Stage 2 ((Ball A + Stem) + Ball B) deterministically, cleaning all temporary objects and intermediate mesh datablocks.
+- Parameter validation (`validate_double_ball_parameters`): enforces positive finite dimensions, `stem_diameter < min(ball_a, ball_b)`, `center_distance_mm >= (ball_a_diameter_mm + ball_b_diameter_mm) / 2.0` (preserving distinct ball lobes without direct sphere overlap), and strict integer tessellation bounds.
+- Multi-stage transactional rollback: handles failures at Stage 1 (Ball A + Stem), Stage 2 ((Ball A + Stem) + Ball B), or post-evaluation commit phases deterministically, guaranteeing zero uncommitted evaluated mesh leaks and zero orphan objects.
 - Operator `kinefig.create_double_ball_joint`: registered with `UNDO`, cursor placement, and sequential naming (`KF_Joint_DoubleBall_001`, `002`...).
-- Sidebar N-panel UI: interactive inputs for Ball A Dia, Ball B Dia, Stem Dia, Center Dist, and live computed total Z height readout.
-- Real Blender packaged zip integration tests (`tests/test_blender_runtime.py`): asserts 0 non-manifold edges, 0 boundary edges, positive volume, exact bounding box dimensions (symmetric and asymmetric), multi-stage failure rollback, and unshielded Undo state transitions.
+- Sidebar N-panel UI: interactive inputs for Ball A Dia, Ball B Dia, Stem Dia, Center Dist, with live computed total Z height readout and min-distance overlap warning.
+- Real Blender packaged zip integration tests (`tests/test_blender_runtime.py`): asserts 0 non-manifold edges, 0 boundary edges, positive volume, exactly 1 connected component solid, exact bounding box dimensions (symmetric and asymmetric), multi-stage and post-evaluation failure rollbacks, and unshielded Undo state transitions.
 - *Note*: PR-004 generates nominal male double-ball joint geometry. Clearance belongs to matching female sockets, not by altering nominal ball diameters.
 
 ## 0.0.3 (PR-003 Parametric Female Ball Socket Cavity Core)
