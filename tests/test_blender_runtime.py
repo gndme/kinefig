@@ -208,7 +208,8 @@ def run_tests():
         assert math.isclose(socket_obj.get("kf_socket_diameter_mm"), 5.30, abs_tol=1e-5), "kf_socket_diameter_mm mismatch"
         assert math.isclose(socket_obj.get("kf_socket_depth_mm"), 3.5, abs_tol=1e-5), "kf_socket_depth_mm mismatch"
         assert tuple(socket_obj.get("kf_axis")) == (0.0, 0.0, 1.0), "kf_axis mismatch"
-        assert tuple(socket_obj.get("kf_insertion_axis")) == (0.0, 0.0, -1.0), "kf_insertion_axis mismatch"
+        assert tuple(socket_obj.get("kf_insertion_axis")) == (0.0, 0.0, 1.0), "kf_insertion_axis mismatch"
+        assert tuple(socket_obj.get("kf_opening_normal")) == (0.0, 0.0, -1.0), "kf_opening_normal mismatch"
 
         # Uncomputed/unknown metadata keys must NOT be present
         for uncomputed_key in ("kf_range_min", "kf_range_max", "kf_role", "kf_side", "fit_quality", "printer_profile"):
@@ -294,6 +295,22 @@ def run_tests():
             "kinefig_ball_socket.ball_diameter_mm not updated from selected ball"
         )
         print("  -> PASSED: Successfully populated socket ball diameter from selected ball joint")
+
+        # Test hardening against malformed/invalid metadata (FINDING MEDIUM-02)
+        print("  -> Testing use_selected_ball rejection of malformed metadata (NaN)...")
+        orig_ball_d = ball_obj.get("kf_ball_diameter_mm")
+        ball_obj["kf_ball_diameter_mm"] = float("nan")
+        prev_socket_d = bpy.context.scene.kinefig_ball_socket.ball_diameter_mm
+
+        res_malformed = bpy.ops.kinefig.use_selected_ball()
+        assert res_malformed == {"CANCELLED"}, f"Expected CANCELLED on NaN metadata, got {res_malformed}"
+        assert math.isclose(
+            bpy.context.scene.kinefig_ball_socket.ball_diameter_mm, prev_socket_d, abs_tol=1e-5
+        ), "Scene socket setting was modified on validation failure!"
+
+        # Restore original valid metadata cleanly
+        ball_obj["kf_ball_diameter_mm"] = orig_ball_d
+        print("  -> PASSED: Malformed metadata safely rejected without mutating scene state")
 
         # 11. Verify Scene Safety & Temp Cleanup on Success
         print("\n[11/13] Verifying scene safety and temp datablock cleanup on success...")

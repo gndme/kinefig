@@ -3,6 +3,7 @@
 import bpy
 from ..geometry.sockets import create_ball_socket_geometry
 from ..core.errors import KineFigValidationError, KineFigGeometryError
+from ..core.validation import require_positive
 from ..core.logging import log_error, log_info
 
 
@@ -118,14 +119,17 @@ class KINEFIG_OT_use_selected_ball(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        obj = getattr(context, "active_object", None)
-        if obj is None:
+        try:
+            obj = getattr(context, "active_object", None)
+            if obj is None:
+                return False
+            return (
+                obj.get("kf_type") == "joint"
+                and obj.get("kf_joint_type") == "ball"
+                and "kf_ball_diameter_mm" in obj
+            )
+        except Exception:
             return False
-        return (
-            obj.get("kf_type") == "joint"
-            and obj.get("kf_joint_type") == "ball"
-            and "kf_ball_diameter_mm" in obj
-        )
 
     def execute(self, context):
         obj = getattr(context, "active_object", None)
@@ -133,12 +137,18 @@ class KINEFIG_OT_use_selected_ball(bpy.types.Operator):
             self.report({"WARNING"}, "Active object is not a KineFig Ball Joint")
             return {"CANCELLED"}
 
-        ball_d = obj.get("kf_ball_diameter_mm")
-        if ball_d is None or float(ball_d) <= 0.0:
-            self.report({"ERROR"}, "Selected ball joint has invalid kf_ball_diameter_mm metadata")
+        ball_d_raw = obj.get("kf_ball_diameter_mm")
+        if ball_d_raw is None:
+            self.report({"ERROR"}, f"Selected ball joint {obj.name} has no kf_ball_diameter_mm metadata")
             return {"CANCELLED"}
 
-        val = float(ball_d)
+        try:
+            val = require_positive(ball_d_raw, "kf_ball_diameter_mm")
+        except (KineFigValidationError, Exception) as exc:
+            self.report({"ERROR"}, f"Invalid ball diameter metadata on {obj.name}: {exc}")
+            log_error(f"Failed to use selected ball metadata from {obj.name}: {exc}")
+            return {"CANCELLED"}
+
         if hasattr(context, "scene") and hasattr(context.scene, "kinefig_ball_socket"):
             context.scene.kinefig_ball_socket.ball_diameter_mm = val
 

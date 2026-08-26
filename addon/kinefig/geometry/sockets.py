@@ -67,9 +67,10 @@ def create_ball_socket_geometry(
     Orientation & Coordinates:
     - Default location: 3D Cursor position (or specified location).
     - Local origin: (0, 0, 0) at the center of the planar opening face.
-    - Local axis: along +Z (cavity extends from z = 0 to z = socket_depth_m).
+    - Socket cavity axis (kf_axis): along +Z (cavity extends from z = 0 to z = socket_depth_m).
     - Deepest internal cavity point: at (0, 0, socket_depth_m).
-    - Opening plane: at z = 0 facing -Z (kf_insertion_axis = (0.0, 0.0, -1.0)).
+    - Insertion direction (kf_insertion_axis): (0.0, 0.0, 1.0) (male ball travel from outside into cavity).
+    - Opening outward normal (kf_opening_normal): (0.0, 0.0, -1.0) (pointing outward from opening plane).
     - Sphere center: at (0, 0, socket_depth_m - socket_radius_m).
 
     Transactional Safety:
@@ -224,7 +225,8 @@ def create_ball_socket_geometry(
         socket_obj["kf_socket_diameter_mm"] = round(float(socket_diameter_mm), 4)
         socket_obj["kf_socket_depth_mm"] = round(float(socket_depth_mm), 4)
         socket_obj["kf_axis"] = (0.0, 0.0, 1.0)
-        socket_obj["kf_insertion_axis"] = (0.0, 0.0, -1.0)
+        socket_obj["kf_insertion_axis"] = (0.0, 0.0, 1.0)
+        socket_obj["kf_opening_normal"] = (0.0, 0.0, -1.0)
 
         # 10. Log operational event
         log_info(

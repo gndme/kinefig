@@ -96,8 +96,9 @@ Every generated joint carries only factual properties validated and computed at 
 ### Coordinate & Insertion Axis Conventions
 - **Location**: Default at 3D Cursor.
 - **Local Origin**: `(0, 0, 0)` is positioned at the center of the planar opening face.
-- **Socket Axis**: Points along **+Z** (cavity extends from `z = 0` to `z = socket_depth_m`).
-- **Insertion Direction**: Opening faces **-Z** (`kf_insertion_axis = (0.0, 0.0, -1.0)`).
+- **Socket Axis (`kf_axis`)**: Points along **+Z** (`(0.0, 0.0, 1.0)`), extending from opening plane `z = 0` to deepest cavity point `z = socket_depth_m`.
+- **Insertion Direction (`kf_insertion_axis`)**: Vector **+Z** (`(0.0, 0.0, 1.0)`), representing the direction of male-part travel from outside through the opening into the cavity.
+- **Opening Normal (`kf_opening_normal`)**: Vector **-Z** (`(0.0, 0.0, -1.0)`), pointing outward from the opening plane away from the cavity.
 - **Deepest Cavity Point**: Located at `(0, 0, socket_depth_m)`.
 - **Sphere Center**: Located at `(0, 0, socket_depth_m - socket_radius_m)`.
 
@@ -110,7 +111,8 @@ Every generated joint carries only factual properties validated and computed at 
 - `kf_socket_diameter_mm`: Internal cavity diameter in mm (float)
 - `kf_socket_depth_mm`: Cavity depth in mm (float)
 - `kf_axis`: Socket cavity axis `(0.0, 0.0, 1.0)`
-- `kf_insertion_axis`: Direction outward from opening `(0.0, 0.0, -1.0)`
+- `kf_insertion_axis`: Male insertion travel direction `(0.0, 0.0, 1.0)`
+- `kf_opening_normal`: Outward normal of opening plane `(0.0, 0.0, -1.0)`
 - Uncomputed keys are strictly omitted.
 
 

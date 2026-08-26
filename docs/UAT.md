@@ -124,6 +124,7 @@ Check:
 - Depth contract: total height along Z matches `socket_depth` (e.g. 3.5 mm from opening plane to apex);
 - Retaining undercut: when depth exceeds radius (e.g. 3.5 mm depth for 2.65 mm radius), the circular opening is narrower than the cavity equator, forming an articulated retaining lip;
 - Contextual UX: selecting an active male ball joint and clicking **Match Selected Ball** automatically reads its diameter into the socket settings;
+- Orientation & insertion axis: cavity extends along +Z from opening at z = 0, male ball enters along +Z (`kf_insertion_axis = (0, 0, 1)`), opening plane normal faces -Z (`kf_opening_normal = (0, 0, -1)`);
 - Sequential naming: generates `KF_Socket_Ball_001`, `KF_Socket_Ball_002` without collisions;
 - Geometry quality: watertight, closed 2-manifold cutter volume ready for Boolean subtraction into body meshes;
 - *Note*: PR-003 provides the cutter/cavity tool object. Automatic Boolean carving into figure body meshes belongs to future body socket seating features.

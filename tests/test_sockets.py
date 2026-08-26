@@ -48,7 +48,8 @@ def test_ball_socket_factual_metadata_and_absence_of_unknowns():
     assert obj.get("kf_socket_diameter_mm") == 5.30
     assert obj.get("kf_socket_depth_mm") == 3.5
     assert obj.get("kf_axis") == (0.0, 0.0, 1.0)
-    assert obj.get("kf_insertion_axis") == (0.0, 0.0, -1.0)
+    assert obj.get("kf_insertion_axis") == (0.0, 0.0, 1.0)
+    assert obj.get("kf_opening_normal") == (0.0, 0.0, -1.0)
 
     # Unknown / uncomputed metadata must NOT exist
     assert "kf_range_min" not in obj

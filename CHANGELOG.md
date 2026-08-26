@@ -5,10 +5,12 @@
 - Centralized clearance mathematics (`core/clearance.py`): strictly enforces radial clearance contract (`socket_diameter = ball_diameter + 2 * clearance`).
 - Parameter validation (`validate_ball_socket_parameters`): validates positive ball diameter, non-negative radial clearance, depth `< socket_diameter`, and strict integer tessellation.
 - Operators `kinefig.create_ball_socket` and contextual `kinefig.use_selected_ball` (reads ball diameter directly from active KineFig ball joint).
+- Hardened `use_selected_ball` operator against arbitrary/malformed metadata using `require_positive()`: safely rejects non-positive, non-finite (NaN, inf), string, or None metadata without crashing or mutating scene settings.
+- Explicit insertion axis semantic contract: stores `kf_axis = (0, 0, 1)` (cavity axis), `kf_insertion_axis = (0, 0, 1)` (male travel direction into socket), and `kf_opening_normal = (0, 0, -1)` (outward normal of opening plane).
 - UI integration in Sidebar N-panel: dedicated Ball Socket card with diameter, radial clearance, depth controls, computed cavity diameter readout, and one-click ball matching.
 - Exact Boolean difference trimming: cleanly slices spherical cavity at insertion plane `z = 0` with flat capping polygon, ensuring 100% 2-manifold closed cutter volume.
 - Guaranteed BMesh native resource lifecycle safety using `try / finally` blocks.
-- Real Blender packaged zip integration tests (`tests/test_blender_runtime.py`): asserts 0 non-manifold edges, 0 boundary edges, positive volume, exact bounding box dimensions, and geometric clearance invariant (`cavity_radius - ball_radius == clearance`).
+- Real Blender packaged zip integration tests (`tests/test_blender_runtime.py`): asserts 0 non-manifold edges, 0 boundary edges, positive volume, exact bounding box dimensions, axis metadata contract, malformed metadata rejection, and geometric clearance invariant (`cavity_radius - ball_radius == clearance`).
 - *Note*: PR-003 generates socket cutter/cavity tool geometry; automatic Boolean subtraction into arbitrary body meshes belongs to future socket seating workflows.
 
 ## 0.0.2 (PR-002 Male Ball Joint Geometry Core)

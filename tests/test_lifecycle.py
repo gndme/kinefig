@@ -303,6 +303,52 @@ def test_use_selected_ball_operator():
     assert "INFO" in op.report.call_args[0][0]
 
 
+import pytest
+
+
+@pytest.mark.parametrize(
+    "invalid_val",
+    [
+        0,
+        0.0,
+        -1,
+        -5.0,
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        "abc",
+        None,
+    ],
+)
+def test_use_selected_ball_invalid_metadata_rejected(invalid_val):
+    """Verify operator returns CANCELLED and does NOT mutate scene settings for invalid metadata."""
+    from addon.kinefig.operators.sockets import KINEFIG_OT_use_selected_ball
+
+    op = KINEFIG_OT_use_selected_ball()
+    op.report = MagicMock()
+
+    ball_obj = MagicMock()
+    ball_props = {
+        "kf_type": "joint",
+        "kf_joint_type": "ball",
+        "kf_ball_diameter_mm": invalid_val,
+    }
+    ball_obj.name = "KF_Joint_Ball_Corrupted"
+    ball_obj.get.side_effect = lambda k, d=None: ball_props.get(k, d)
+    ball_obj.__contains__ = lambda self, k: k in ball_props
+
+    ctx = MagicMock()
+    ctx.active_object = ball_obj
+    initial_setting = 5.0
+    ctx.scene.kinefig_ball_socket.ball_diameter_mm = initial_setting
+
+    res = op.execute(ctx)
+    assert res == {"CANCELLED"}
+    assert ctx.scene.kinefig_ball_socket.ball_diameter_mm == initial_setting
+    op.report.assert_called_once()
+    assert "ERROR" in op.report.call_args[0][0]
+
+
 def test_copy_debug_info_operator():
     """Verify copy debug info operator copies text to clipboard."""
     op = KINEFIG_OT_copy_debug_info()
