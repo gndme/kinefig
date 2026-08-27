@@ -9,6 +9,7 @@ from addon.kinefig.core.validation import (
     require_integer_in_range,
     validate_ball_joint_parameters,
     validate_ball_socket_parameters,
+    validate_double_ball_parameters,
     validate_peg_parameters,
     validate_peg_socket_parameters,
 )
@@ -283,6 +284,13 @@ def test_validate_ball_socket_parameters_invalid_tessellation(bad_seg, bad_ring)
         validate_ball_socket_parameters(5.0, 0.15, 3.5, segments=bad_seg, rings=bad_ring)
 
 
+# ==============================================================================
+# Peg Parameter Validation Tests
+# ==============================================================================
+
+from addon.kinefig.core.validation import validate_peg_parameters, validate_peg_socket_parameters
+
+
 def test_validate_peg_parameters_valid():
     """Verify validate_peg_parameters accepts valid default and custom parameters."""
     validate_peg_parameters(3.0, 5.0)
@@ -372,5 +380,113 @@ def test_validate_peg_socket_parameters_invalid_tessellation(bad_seg):
     """Verify validate_peg_socket_parameters rejects invalid segment counts."""
     with pytest.raises(KineFigValidationError):
         validate_peg_socket_parameters(3.0, 0.15, 5.0, segments=bad_seg)
+
+
+# ==============================================================================
+# Double Ball Parameter Validation Tests
+# ==============================================================================
+
+from addon.kinefig.core.validation import validate_double_ball_parameters
+
+
+def test_validate_double_ball_parameters_valid():
+    """Verify validate_double_ball_parameters accepts valid symmetric and asymmetric parameters."""
+    validate_double_ball_parameters(5.0, 5.0, 3.0, 8.0)
+    validate_double_ball_parameters(4.0, 6.0, 2.5, 8.0, segments=64, rings=32)
+    validate_double_ball_parameters(3.0, 3.0, 1.5, 3.0)  # Balls touching at center distance = R_a + R_b
+
+
+@pytest.mark.parametrize(
+    "ball_a, ball_b, stem, dist",
+    [
+        (0.0, 5.0, 3.0, 8.0),
+        (-5.0, 5.0, 3.0, 8.0),
+        (5.0, 0.0, 3.0, 8.0),
+        (5.0, -5.0, 3.0, 8.0),
+        (5.0, 5.0, 0.0, 8.0),
+        (5.0, 5.0, -3.0, 8.0),
+        (5.0, 5.0, 3.0, 0.0),
+        (5.0, 5.0, 3.0, -8.0),
+        (float("nan"), 5.0, 3.0, 8.0),
+        (5.0, float("nan"), 3.0, 8.0),
+        (5.0, 5.0, float("nan"), 8.0),
+        (5.0, 5.0, 3.0, float("nan")),
+        (float("inf"), 5.0, 3.0, 8.0),
+        (5.0, float("-inf"), 3.0, 8.0),
+    ],
+)
+def test_validate_double_ball_parameters_non_positive_or_non_finite(ball_a, ball_b, stem, dist):
+    """Verify validate_double_ball_parameters rejects <= 0 or non-finite dimensions."""
+    with pytest.raises(KineFigValidationError):
+        validate_double_ball_parameters(ball_a, ball_b, stem, dist)
+
+
+def test_validate_double_ball_parameters_stem_ge_balls():
+    """Verify validate_double_ball_parameters rejects stem >= min(ball_a, ball_b)."""
+    # Stem == Ball A (symmetric)
+    with pytest.raises(KineFigValidationError, match="must be less than both"):
+        validate_double_ball_parameters(5.0, 5.0, 5.0, 8.0)
+
+    # Stem > Ball A
+    with pytest.raises(KineFigValidationError, match="must be less than both"):
+        validate_double_ball_parameters(5.0, 5.0, 6.0, 8.0)
+
+    # Asymmetric: Stem < Ball B (6mm) but Stem == Ball A (4mm)
+    with pytest.raises(KineFigValidationError, match="must be less than both"):
+        validate_double_ball_parameters(4.0, 6.0, 4.0, 8.0)
+
+    # Asymmetric: Stem > Ball A (4mm)
+    with pytest.raises(KineFigValidationError, match="must be less than both"):
+        validate_double_ball_parameters(4.0, 6.0, 4.5, 8.0)
+
+
+@pytest.mark.parametrize(
+    "bad_seg, bad_ring",
+    [
+        (2, 16),
+        (32, 2),
+        (0, 16),
+        (32, -1),
+        (500, 16),
+        (31.7, 16),
+        (32, 15.9),
+        (32.0, 16),
+        (True, 16),
+        ("32", 16),
+    ],
+)
+def test_validate_double_ball_parameters_invalid_tessellation(bad_seg, bad_ring):
+    """Verify validate_double_ball_parameters rejects out-of-range, non-int segments/rings."""
+    with pytest.raises(KineFigValidationError):
+        validate_double_ball_parameters(5.0, 5.0, 3.0, 8.0, segments=bad_seg, rings=bad_ring)
+
+
+def test_validate_double_ball_parameters_center_distance_boundaries():
+    """Verify validate_double_ball_parameters enforces center_distance >= (ball_a + ball_b)/2.
+
+    Boundary tests:
+    - exact minimum -> PASS
+    - slightly below minimum -> FAIL
+    - significantly below minimum (e.g. 0.1mm) -> FAIL
+    """
+    # Exact minimums: touching spheres at center_distance = r_a + r_b
+    validate_double_ball_parameters(5.0, 5.0, 3.0, 5.0)  # 2.5 + 2.5 = 5.0mm
+    validate_double_ball_parameters(4.0, 6.0, 2.5, 5.0)  # 2.0 + 3.0 = 5.0mm
+    validate_double_ball_parameters(3.5, 4.5, 2.0, 4.0)  # 1.75 + 2.25 = 4.0mm
+
+    # Slightly below minimum -> must raise KineFigValidationError
+    with pytest.raises(KineFigValidationError, match="must be at least the sum of ball radii"):
+        validate_double_ball_parameters(5.0, 5.0, 3.0, 4.999)
+
+    with pytest.raises(KineFigValidationError, match="must be at least the sum of ball radii"):
+        validate_double_ball_parameters(4.0, 6.0, 2.5, 4.99)
+
+    # Significantly below minimum -> must raise KineFigValidationError
+    with pytest.raises(KineFigValidationError, match="must be at least the sum of ball radii"):
+        validate_double_ball_parameters(5.0, 5.0, 3.0, 0.1)
+
+    with pytest.raises(KineFigValidationError, match="must be at least the sum of ball radii"):
+        validate_double_ball_parameters(4.0, 6.0, 2.5, 2.0)
+
 
 

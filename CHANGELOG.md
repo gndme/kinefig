@@ -6,12 +6,24 @@
 - Direct BMesh primitive construction (`bmesh.ops.create_cone` with `cap_ends=True`): 100% analytical watertight 2-manifold solids without Booleans, avoiding boolean solver failures or non-manifold artifacts.
 - Explicit radial clearance contract (`compute_socket_diameter`): `socket_diameter = peg_diameter + 2 * radial_clearance`.
 - Parameter validation (`validate_peg_parameters`, `validate_peg_socket_parameters`): enforces positive finite dimensions, draft angle limits (`0 <= taper < collapse angle`), and strict integer tessellation in [3, 256].
+- Scene unit scale-length awareness (`core/units.py`): added `get_scene_scale_length()` and updated `mm_to_blender` to dynamically adapt to custom scene `Unit Scale` settings (e.g. `0.001` or `1.0`), ensuring millimeter dimensions are 100% accurate in any scene.
 - Operators `kinefig.create_peg_joint`, `kinefig.create_peg_socket`, and contextual `kinefig.use_selected_peg` (reads peg diameter from active peg joint into socket settings).
 - Sidebar N-panel UI: dedicated Male Peg Joint and Peg Socket Receiver cards with diameter, length, taper, radial clearance, and live cavity diameter readout.
 - Hardened Panel.draw against malformed custom metadata: extracted safe helpers `_get_valid_selected_peg_diameter` and `_get_valid_selected_ball_diameter` to prevent draw exceptions on string, None, NaN, inf, or negative values without mutating scene settings.
 - Cleaned redundant exception clauses in `KINEFIG_OT_use_selected_peg` and `KINEFIG_OT_use_selected_ball` (`except Exception as exc:`).
 - Transactional rollback on failure: cleans all created objects and meshes on any failure, preserving scene safety.
-- Complete unit tests (`tests/test_peg.py`, `tests/test_validation.py`) and real Blender 4.2 packaged zip runtime integration tests (`tests/test_blender_runtime.py`).
+- Complete unit tests (`tests/test_peg.py`, `tests/test_validation.py`, `tests/test_units.py`) and real Blender 4.2 packaged zip runtime integration tests (`tests/test_blender_runtime.py`).
+
+## 0.0.4 (PR-004 Parametric Double Ball / Dumbbell Joint Core)
+- Parametric Double Ball / Dumbbell Joint generator (`geometry/joints.py`): creates a single coherent, watertight 2-manifold printable solid combining Ball A at local origin, connecting stem along +Z, and Ball B at center distance along +Z.
+- Multi-stage Exact Boolean union eliminating internal overlapping geometry between spheres and stem.
+- Reusable Boolean evaluation helper (`geometry/boolean.py`): centralized depsgraph evaluation and mesh extraction with strict `KineFigGeometryError` diagnostics.
+- Parameter validation (`validate_double_ball_parameters`): enforces positive finite dimensions, `stem_diameter < min(ball_a, ball_b)`, `center_distance_mm >= (ball_a_diameter_mm + ball_b_diameter_mm) / 2.0` (preserving distinct ball lobes without direct sphere overlap), and strict integer tessellation bounds.
+- Multi-stage transactional rollback: handles failures at Stage 1 (Ball A + Stem), Stage 2 ((Ball A + Stem) + Ball B), or post-evaluation commit phases deterministically, guaranteeing zero uncommitted evaluated mesh leaks and zero orphan objects.
+- Operator `kinefig.create_double_ball_joint`: registered with `UNDO`, cursor placement, and sequential naming (`KF_Joint_DoubleBall_001`, `002`...).
+- Sidebar N-panel UI: interactive inputs for Ball A Dia, Ball B Dia, Stem Dia, Center Dist, with live computed total Z height readout and min-distance overlap warning.
+- Real Blender packaged zip integration tests (`tests/test_blender_runtime.py`): asserts 0 non-manifold edges, 0 boundary edges, positive volume, exactly 1 connected component solid, exact bounding box dimensions (symmetric and asymmetric), multi-stage and post-evaluation failure rollbacks, and unshielded Undo state transitions.
+- *Note*: PR-004 generates nominal male double-ball joint geometry. Clearance belongs to matching female sockets, not by altering nominal ball diameters.
 
 ## 0.0.3 (PR-003 Parametric Female Ball Socket Cavity Core)
 - Parametric female Ball Socket cavity generator (`geometry/sockets.py`): creates watertight, closed 2-manifold cutter volume representing negative cavity space with mm precision.

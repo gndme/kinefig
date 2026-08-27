@@ -115,6 +115,13 @@ if "bmesh" not in sys.modules:
     mock_bmesh.new.return_value = mock_bm_instance
     sys.modules["bmesh"] = mock_bmesh
 
+if "mathutils" not in sys.modules:
+    mock_mathutils = MagicMock()
+    mock_mathutils.Vector = lambda coords=(0.0, 0.0, 0.0): tuple(coords)
+    mock_mathutils.Matrix.Translation = lambda vec: MagicMock()
+    sys.modules["mathutils"] = mock_mathutils
+
+
 
 @pytest.fixture(autouse=True)
 def reset_mock_bpy():

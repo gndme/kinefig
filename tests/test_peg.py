@@ -311,6 +311,14 @@ def test_panel_draw_safe_with_malformed_peg_metadata(malformed_val):
     scene.kinefig_peg_joint.taper_angle_deg = 0.0
     scene.kinefig_peg_joint.segments = 32
 
+    scene.kinefig_double_ball_joint = MagicMock()
+    scene.kinefig_double_ball_joint.ball_a_diameter_mm = 5.0
+    scene.kinefig_double_ball_joint.ball_b_diameter_mm = 5.0
+    scene.kinefig_double_ball_joint.stem_diameter_mm = 3.0
+    scene.kinefig_double_ball_joint.center_distance_mm = 8.0
+    scene.kinefig_double_ball_joint.segments = 32
+    scene.kinefig_double_ball_joint.rings = 16
+
     context.scene = scene
 
     panel = KINEFIG_PT_main()

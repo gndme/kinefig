@@ -120,14 +120,67 @@ class KINEFIG_PT_main(bpy.types.Panel):
             sop.socket_depth_mm = sprops.socket_depth_mm
             sop.segments = sprops.segments
             sop.rings = sprops.rings
-        else:
             socket_box.operator(
                 "kinefig.create_ball_socket",
                 text="Create Ball Socket",
                 icon="ADD",
             )
 
-        # 2C. Male Peg Joint (PR-005)
+        # 2C. Double Ball / Dumbbell Joint (PR-004)
+        db_box = layout.box()
+        db_box.label(text="JOINT: Double Ball / Dumbbell", icon="ARROW_LEFTRIGHT")
+
+        if hasattr(scene, "kinefig_double_ball_joint"):
+            db_props = scene.kinefig_double_ball_joint
+            db_col = db_box.column(align=True)
+            db_col.prop(db_props, "ball_a_diameter_mm", text="Ball A Dia")
+            db_col.prop(db_props, "ball_b_diameter_mm", text="Ball B Dia")
+            db_col.prop(db_props, "stem_diameter_mm", text="Stem Dia")
+            db_col.prop(db_props, "center_distance_mm", text="Center Dist")
+
+            # Center distance semantics & overlap policy readout
+            try:
+                min_dist = (float(db_props.ball_a_diameter_mm) + float(db_props.ball_b_diameter_mm)) / 2.0
+                total_z = float(db_props.center_distance_mm) + min_dist
+                is_overlap = float(db_props.center_distance_mm) < min_dist
+            except Exception:
+                min_dist = 5.0
+                total_z = 13.0
+                is_overlap = False
+
+            db_readout = db_box.row()
+            db_readout.scale_y = 0.8
+            if is_overlap:
+                db_readout.alert = True
+                db_readout.label(
+                    text=f"Overlap! Min Dist: {min_dist:.2f} mm",
+                    icon="ERROR",
+                )
+            else:
+                db_readout.label(
+                    text=f"Total Z: {total_z:.2f} mm (min: {min_dist:.2f} mm)",
+                    icon="INFO",
+                )
+
+            db_op = db_box.operator(
+                "kinefig.create_double_ball_joint",
+                text="Create Double Ball",
+                icon="ADD",
+            )
+            db_op.ball_a_diameter_mm = db_props.ball_a_diameter_mm
+            db_op.ball_b_diameter_mm = db_props.ball_b_diameter_mm
+            db_op.stem_diameter_mm = db_props.stem_diameter_mm
+            db_op.center_distance_mm = db_props.center_distance_mm
+            db_op.segments = db_props.segments
+            db_op.rings = db_props.rings
+        else:
+            db_box.operator(
+                "kinefig.create_double_ball_joint",
+                text="Create Double Ball",
+                icon="ADD",
+            )
+
+        # 2D. Male Peg Joint (PR-005)
         peg_box = layout.box()
         peg_box.label(text="JOINT: Male Peg Joint", icon="MESH_CYLINDER")
 
@@ -154,7 +207,7 @@ class KINEFIG_PT_main(bpy.types.Panel):
                 icon="ADD",
             )
 
-        # 2D. Female Peg Socket Receiver (PR-005)
+        # 2E. Female Peg Socket Receiver (PR-005)
         psocket_box = layout.box()
         psocket_box.label(text="JOINT: Peg Socket Receiver", icon="SNAP_FACE")
 
