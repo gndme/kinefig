@@ -205,7 +205,7 @@ def run_tests():
         print("  -> PASSED: Packaged zip register/unregister cycle clean")
 
         # 2. Scene Safety Setup: unrelated object & scene unit baseline
-        print("\n[2/19] Testing scene safety & preservation baseline...")
+        print("\n[2/24] Testing scene safety & preservation baseline...")
         if bpy.context.mode != "OBJECT":
             bpy.ops.object.mode_set(mode="OBJECT")
 
@@ -241,7 +241,7 @@ def run_tests():
             return components
 
         # 3. Create Parametric Male Ball Joint (PR-002 Core)
-        print("\n[3/19] Testing bpy.ops.kinefig.create_ball_joint execution...")
+        print("\n[3/24] Testing bpy.ops.kinefig.create_ball_joint execution...")
         res = bpy.ops.kinefig.create_ball_joint(
             ball_diameter_mm=5.0,
             stem_diameter_mm=3.0,
@@ -256,14 +256,14 @@ def run_tests():
         print(f"  -> PASSED: Created {ball_obj.name}")
 
         # 4. Create Parametric Female Ball Socket (PR-003 Core)
-        print("\n[4/19] Testing bpy.ops.kinefig.create_ball_socket execution...")
+        print("\n[4/24] Testing bpy.ops.kinefig.create_ball_socket execution...")
         sres = bpy.ops.kinefig.create_ball_socket(
             ball_diameter_mm=5.0,
             clearance_mm=0.15,
             socket_depth_mm=3.5,
             segments=32,
             rings=16,
-        )
+            )
         assert sres == {"FINISHED"}, f"create_ball_socket returned {sres}"
 
         socket_obj = bpy.data.objects.get("KF_Socket_Ball_001")
@@ -271,7 +271,7 @@ def run_tests():
         print(f"  -> PASSED: Created {socket_obj.name}")
 
         # 5. Verify Socket Factual Metadata & Absence of Unknowns
-        print("\n[5/19] Verifying socket parametric metadata...")
+        print("\n[5/24] Verifying socket parametric metadata...")
         assert socket_obj.get("kf_type") == "socket", f"kf_type mismatch: {socket_obj.get('kf_type')}"
         assert socket_obj.get("kf_socket_type") == "ball", f"kf_socket_type mismatch: {socket_obj.get('kf_socket_type')}"
         assert math.isclose(socket_obj.get("kf_ball_diameter_mm"), 5.0, abs_tol=1e-5), "kf_ball_diameter_mm mismatch"
@@ -288,7 +288,7 @@ def run_tests():
         print("  -> PASSED: Socket factual metadata verified; uncomputed keys are strictly absent")
 
         # 6. Verify Socket Dimensions & 3D Cursor Placement
-        print("\n[6/19] Verifying socket geometry dimensions and location...")
+        print("\n[6/24] Verifying socket geometry dimensions and location...")
         sdim = socket_obj.dimensions
         tolerance = 2e-4  # 0.2 mm tolerance for discrete mesh facets
 
@@ -313,7 +313,7 @@ def run_tests():
         print(f"  -> Socket Location: ({sloc.x:.3f}, {sloc.y:.3f}, {sloc.z:.3f}) matches 3D Cursor")
 
         # 7. Geometry Quality Check: Manifoldness Assertion on Socket Tool (bmesh)
-        print("\n[7/19] Asserting 100% Watertight 2-Manifold Quality on Socket Cutter...")
+        print("\n[7/24] Asserting 100% Watertight 2-Manifold Quality on Socket Cutter...")
         sbm = bmesh.new()
         sbm.from_mesh(socket_obj.data)
 
@@ -329,7 +329,7 @@ def run_tests():
         sbm.free()
 
         # 8. Matched Ball + Socket Invariant (Geometric Clearance Assertion)
-        print("\n[8/19] Asserting Matched Ball + Socket Geometric Clearance Invariant...")
+        print("\n[8/24] Asserting Matched Ball + Socket Geometric Clearance Invariant...")
         ball_radius_measured = ball_obj.dimensions.x / 2.0
         socket_radius_measured = socket_obj.dimensions.x / 2.0
         measured_radial_clearance = socket_radius_measured - ball_radius_measured
@@ -346,7 +346,7 @@ def run_tests():
         )
 
         # 9. Repeated Execution & Naming Collision Avoidance for Sockets
-        print("\n[9/19] Testing repeated execution collision handling for sockets...")
+        print("\n[9/24] Testing repeated execution collision handling for sockets...")
         sres2 = bpy.ops.kinefig.create_ball_socket(
             ball_diameter_mm=6.0,
             clearance_mm=0.2,
@@ -359,7 +359,7 @@ def run_tests():
         print("  -> PASSED: Sequential naming generated KF_Socket_Ball_002 cleanly")
 
         # 10. Contextual UX link: Use Selected Ball Operator
-        print("\n[10/19] Testing bpy.ops.kinefig.use_selected_ball operator...")
+        print("\n[10/24] Testing bpy.ops.kinefig.use_selected_ball operator...")
         bpy.context.view_layer.objects.active = ball_obj
         res_link = bpy.ops.kinefig.use_selected_ball()
         assert res_link == {"FINISHED"}, f"use_selected_ball returned {res_link}"
@@ -385,7 +385,7 @@ def run_tests():
         print("  -> PASSED: Malformed metadata safely rejected without mutating scene state")
 
         # 11. Verify Scene Safety & Temp Cleanup on Success
-        print("\n[11/19] Verifying scene safety and temp datablock cleanup on success...")
+        print("\n[11/24] Verifying scene safety and temp datablock cleanup on success...")
         assert "User_Target_Mesh" in bpy.data.objects, "Unrelated object was removed or renamed"
         assert bpy.context.scene.unit_settings.scale_length == initial_unit_scale, "Scene unit settings altered"
 
@@ -397,7 +397,7 @@ def run_tests():
         print(f"  -> PASSED: Zero temporary objects or meshes ({PREFIX_TEMP} = 0)")
 
         # 12. Test Transactional Rollback on Socket Boolean Failure
-        print("\n[12/19] Testing socket transactional rollback on Boolean failure via internal seam...")
+        print("\n[12/24] Testing socket transactional rollback on Boolean failure via internal seam...")
         baseline_objects = set(bpy.data.objects.keys())
         baseline_meshes = set(bpy.data.meshes.keys())
 
@@ -437,6 +437,10 @@ def run_tests():
 
         # 13. Test Undo State Transition (Unshielded)
         print("\n[13/24] Testing Undo state transition for sockets...")
+        undo_supported = (
+            hasattr(bpy.ops.ed, "undo")
+            and bpy.ops.ed.undo.poll()
+        )
         res_undo = bpy.ops.kinefig.create_ball_socket(
             ball_diameter_mm=7.0,
             clearance_mm=0.2,
@@ -531,8 +535,8 @@ def run_tests():
         assert comp_count == 1, f"Double Ball should be a single coherent solid, got {comp_count} components"
         print(f"  -> PASSED: Double Ball is watertight 2-manifold (non-manifold=0, boundaries=0, volume={vol:.2e}m³, components=1)")
 
-        # 14. Testing Asymmetric Double Ball Joint (PR-004)
-        print("\n[14/16] Testing asymmetric Double Ball joint (Ball A=4mm, Ball B=6mm, Stem=2.5mm, Dist=8mm)...")
+        # 15. Testing Asymmetric Double Ball Joint (PR-004)
+        print("\n[15/24] Testing asymmetric Double Ball joint (Ball A=4mm, Ball B=6mm, Stem=2.5mm, Dist=8mm)...")
         res_asym = bpy.ops.kinefig.create_double_ball_joint(
             ball_a_diameter_mm=4.0,
             ball_b_diameter_mm=6.0,
@@ -569,8 +573,8 @@ def run_tests():
         assert comp_asym == 1, f"Asymmetric Double Ball should be a single coherent solid, got {comp_asym} components"
         print(f"  -> PASSED: Asymmetric Double Ball orientation verified: Ball A bottom={min_z_mm:.2f}mm, Ball B top={max_z_mm:.2f}mm, components=1")
 
-        # 15. Testing Multi-stage Transactional Rollback on Boolean Failure
-        print("\n[15/16] Testing multi-stage transactional rollback on Boolean failure...")
+        # 16. Testing Multi-stage Transactional Rollback on Boolean Failure
+        print("\n[16/24] Testing multi-stage transactional rollback on Boolean failure...")
         baseline_db_objects = set(bpy.data.objects.keys())
         baseline_db_meshes = set(bpy.data.meshes.keys())
 
@@ -704,8 +708,8 @@ def run_tests():
         assert set(bpy.data.meshes.keys()) == baseline_db_meshes, "Meshes leaked after overlap rejection!"
         print("  -> PASSED: Center distance overlap strictly rejected without scene mutation")
 
-        # 16. Test Undo State Transition (Sockets & Double Ball)
-        print("\n[16/16] Testing Undo state transition for Double Ball joints...")
+        # 17. Test Undo State Transition (Double Ball)
+        print("\n[17/24] Testing Undo state transition for Double Ball joints...")
         res_undo_db = bpy.ops.kinefig.create_double_ball_joint(
             ball_a_diameter_mm=5.0,
             ball_b_diameter_mm=5.0,
@@ -715,11 +719,6 @@ def run_tests():
         assert res_undo_db == {"FINISHED"}, f"Failed to create undo test double ball: {res_undo_db}"
         undo_test_db_name = "KF_Joint_DoubleBall_003"
         assert undo_test_db_name in bpy.data.objects, f"Expected {undo_test_db_name} before Undo"
-
-        undo_supported = (
-            hasattr(bpy.ops.ed, "undo")
-            and bpy.ops.ed.undo.poll()
-        )
 
         if not undo_supported:
             print(
@@ -739,8 +738,8 @@ def run_tests():
             assert "KF_Socket_Ball_001" in bpy.data.objects, "Earlier KF_Socket_Ball_001 was improperly removed by Undo!"
             print(f"  -> PASSED: Undo removed {undo_test_db_name}; verified earlier and unrelated objects preserved")
 
-        # 14. Testing Male Peg Joint Default (PR-005)
-        print("\n[14/19] Testing bpy.ops.kinefig.create_peg_joint execution (default: 3mm diam, 5mm length)...")
+        # 18. Testing Male Peg Joint Default (PR-005)
+        print("\n[18/24] Testing bpy.ops.kinefig.create_peg_joint execution (default: 3mm diam, 5mm length)...")
         pres = bpy.ops.kinefig.create_peg_joint(
             peg_diameter_mm=3.0,
             peg_length_mm=5.0,
@@ -782,8 +781,8 @@ def run_tests():
         pbm.free()
         print("  -> PASSED: Created KF_Joint_Peg_001 (manifold=2, components=1, z=[0, 5.0mm])")
 
-        # 15. Testing Male Peg Joint Variant / Tapered (PR-005)
-        print("\n[15/19] Testing tapered peg joint (4mm base, 7mm length, 5° draft)...")
+        # 19. Testing Male Peg Joint Variant / Tapered (PR-005)
+        print("\n[19/24] Testing tapered peg joint (4mm base, 7mm length, 5° draft)...")
         pres_taper = bpy.ops.kinefig.create_peg_joint(
             peg_diameter_mm=4.0,
             peg_length_mm=7.0,
@@ -812,8 +811,8 @@ def run_tests():
         tbm.free()
         print(f"  -> PASSED: Created KF_Joint_Peg_002 (taper verified: base_r={r_base_found:.2f}mm, tip_r={r_tip_found:.2f}mm)")
 
-        # 16. Testing Female Peg Socket Receiver Default (PR-005)
-        print("\n[16/19] Testing bpy.ops.kinefig.create_peg_socket (peg=3mm, clearance=0.15mm, depth=5mm)...")
+        # 20. Testing Female Peg Socket Receiver Default (PR-005)
+        print("\n[20/24] Testing bpy.ops.kinefig.create_peg_socket (peg=3mm, clearance=0.15mm, depth=5mm)...")
         psres = bpy.ops.kinefig.create_peg_socket(
             peg_diameter_mm=3.0,
             radial_clearance_mm=0.15,
@@ -856,8 +855,8 @@ def run_tests():
         psbm.free()
         print("  -> PASSED: Created KF_Socket_Peg_001 (diameter=3.30mm, depth=5.0mm, components=1)")
 
-        # 17. Matching Clearance Invariant & Contextual use_selected_peg (PR-005)
-        print("\n[17/19] Asserting Peg + Socket Clearance Invariant & use_selected_peg...")
+        # 21. Matching Clearance Invariant & Contextual use_selected_peg (PR-005)
+        print("\n[21/24] Asserting Peg + Socket Clearance Invariant & use_selected_peg...")
         peg_r_measured = peg_obj.dimensions.x / 2.0
         psocket_r_measured = psocket_obj.dimensions.x / 2.0
         peg_radial_clearance = psocket_r_measured - peg_r_measured
@@ -902,8 +901,8 @@ def run_tests():
         peg_obj["kf_peg_diameter_mm"] = orig_peg_d
         print("  -> PASSED: All malformed metadata cases (abc, None, NaN, +/-inf, 0, -1) safely rejected without scene mutation")
 
-        # 18. Testing Peg Core Validation & Zero-Leak Rollback (PR-005)
-        print("\n[18/19] Testing peg core validation error and transactional rollback...")
+        # 22. Testing Peg Core Validation & Zero-Leak Rollback (PR-005)
+        print("\n[22/24] Testing peg core validation error and transactional rollback...")
         baseline_peg_objects = set(bpy.data.objects.keys())
         baseline_peg_meshes = set(bpy.data.meshes.keys())
 
@@ -928,8 +927,8 @@ def run_tests():
         )
         print("  -> PASSED: Negative peg diameter rejected by core validation; zero leaks, state preserved")
 
-        # 19. Testing Undo State Transition for Peg Joints (PR-005)
-        print("\n[19/19] Testing Undo state transition for Peg joints...")
+        # 23. Testing Undo State Transition for Peg Joints (PR-005)
+        print("\n[23/24] Testing Undo state transition for Peg joints...")
         res_undo_peg = bpy.ops.kinefig.create_peg_joint(
             peg_diameter_mm=3.0,
             peg_length_mm=5.0,
@@ -949,8 +948,8 @@ def run_tests():
             assert "KF_Socket_Peg_001" in bpy.data.objects
             print(f"  -> PASSED: Undo removed {undo_test_peg_name}; earlier objects preserved")
 
-        # 20. Testing Scene Unit Scale Adaptation (Unit Scale = 0.001 / Millimeters)
-        print("\n[20/20] Testing Scene Unit Scale adaptation (scale_length = 0.001)...")
+        # 24. Testing Scene Unit Scale Adaptation (Unit Scale = 0.001 / Millimeters)
+        print("\n[24/24] Testing Scene Unit Scale adaptation (scale_length = 0.001)...")
         orig_scale_length = bpy.context.scene.unit_settings.scale_length
         try:
             bpy.context.scene.unit_settings.scale_length = 0.001
