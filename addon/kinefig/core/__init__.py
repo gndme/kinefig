@@ -1,6 +1,6 @@
 """KineFig core module."""
 
-from .units import MM_TO_M, mm_to_blender, blender_to_mm
+from .units import MM_TO_M, mm_to_blender, blender_to_mm, get_scene_scale_length
 from .errors import KineFigError, KineFigValidationError, KineFigGeometryError
 from .clearance import (
     compute_socket_diameter,

@@ -71,3 +71,45 @@ def test_units_invalid_type():
 
     with pytest.raises((ValueError, TypeError)):
         blender_to_mm("invalid")
+
+
+def test_get_scene_scale_length():
+    """Verify get_scene_scale_length extracts scale_length safely with fallbacks."""
+    from unittest.mock import MagicMock
+    from addon.kinefig.core.units import get_scene_scale_length
+
+    assert get_scene_scale_length(None) == 1.0
+    assert get_scene_scale_length(object()) == 1.0
+
+    mock_context = MagicMock()
+    mock_context.scene.unit_settings.scale_length = 0.001
+    assert get_scene_scale_length(mock_context) == 0.001
+
+    mock_context.scene.unit_settings.scale_length = 1.0
+    assert get_scene_scale_length(mock_context) == 1.0
+
+    # Non-positive or non-finite fallback
+    mock_context.scene.unit_settings.scale_length = 0.0
+    assert get_scene_scale_length(mock_context) == 1.0
+
+    mock_context.scene.unit_settings.scale_length = float("nan")
+    assert get_scene_scale_length(mock_context) == 1.0
+
+
+@pytest.mark.parametrize(
+    "scale_length, mm_val, expected_bu",
+    [
+        (1.0, 10.0, 0.010),
+        (0.001, 10.0, 10.0),
+        (0.01, 10.0, 1.0),
+        (0.001, 3.0, 3.0),
+        (0.001, 0.15, 0.15),
+    ],
+)
+def test_mm_to_blender_with_scale_length(scale_length, mm_val, expected_bu):
+    """Verify mm_to_blender correctly produces internal BU matching scene unit scale."""
+    result = mm_to_blender(mm_val, scale_length=scale_length)
+    assert pytest.approx(result) == expected_bu
+    back_to_mm = blender_to_mm(result, scale_length=scale_length)
+    assert pytest.approx(back_to_mm) == mm_val
+

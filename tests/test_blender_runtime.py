@@ -664,6 +664,30 @@ def run_tests():
             assert "KF_Socket_Peg_001" in bpy.data.objects
             print(f"  -> PASSED: Undo removed {undo_test_peg_name}; earlier objects preserved")
 
+        # 20. Testing Scene Unit Scale Adaptation (Unit Scale = 0.001 / Millimeters)
+        print("\n[20/20] Testing Scene Unit Scale adaptation (scale_length = 0.001)...")
+        orig_scale_length = bpy.context.scene.unit_settings.scale_length
+        try:
+            bpy.context.scene.unit_settings.scale_length = 0.001
+            res_scale_peg = bpy.ops.kinefig.create_peg_joint(
+                peg_diameter_mm=10.0,
+                peg_length_mm=20.0,
+            )
+            assert res_scale_peg == {"FINISHED"}
+            scale_peg_obj = bpy.data.objects.get("KF_Joint_Peg_003")
+            assert scale_peg_obj is not None
+            # When scale_length is 0.001, a 10mm / 20mm peg has 10.0 BU / 20.0 BU geometry.
+            # In Blender world dimensions (BU * scale_length): dimensions are 0.010m (10mm) and 0.020m (20mm).
+            assert math.isclose(scale_peg_obj.dimensions.x, 0.010, abs_tol=1e-4), (
+                f"Expected 0.010m (10mm) in dimensions.x, got {scale_peg_obj.dimensions.x}"
+            )
+            assert math.isclose(scale_peg_obj.dimensions.z, 0.020, abs_tol=1e-4), (
+                f"Expected 0.020m (20mm) in dimensions.z, got {scale_peg_obj.dimensions.z}"
+            )
+            print("  -> PASSED: Successfully adapted to scene scale_length=0.001; 10mm peg measures 10.0mm in world space")
+        finally:
+            bpy.context.scene.unit_settings.scale_length = orig_scale_length
+
         # Cleanup & Final Unregister
         print("\nCleaning up test objects and unregistering...")
         for name in (

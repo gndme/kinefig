@@ -5,7 +5,7 @@ import bpy
 import bmesh
 
 from ..core.build_info import VERSION
-from ..core.units import mm_to_blender
+from ..core.units import mm_to_blender, get_scene_scale_length
 from ..core.clearance import compute_socket_diameter
 from ..core.validation import validate_ball_socket_parameters, validate_peg_socket_parameters
 from ..core.naming import get_next_object_name, format_temp_name, is_temp_object
@@ -90,11 +90,12 @@ def create_ball_socket_geometry(
         rings=rings,
     )
 
-    # 2. Convert millimeters to Blender standard units (1 BU = 1 meter)
+    # 2. Convert millimeters to Blender internal units (BU) respecting scene scale_length
+    scale_length = get_scene_scale_length(context)
     socket_diameter_mm = compute_socket_diameter(ball_diameter_mm, clearance_mm)
-    socket_diameter_m = mm_to_blender(socket_diameter_mm)
+    socket_diameter_m = mm_to_blender(socket_diameter_mm, scale_length)
     socket_radius_m = socket_diameter_m / 2.0
-    socket_depth_m = mm_to_blender(socket_depth_mm)
+    socket_depth_m = mm_to_blender(socket_depth_mm, scale_length)
 
     # Center of sphere along Z such that highest point is at socket_depth_m
     z_center_m = socket_depth_m - socket_radius_m
@@ -337,10 +338,11 @@ def create_peg_socket_geometry(
     if context is None:
         raise KineFigGeometryError("Blender context is required to create peg socket geometry")
 
+    scale_length = get_scene_scale_length(context)
     socket_diameter_mm = compute_socket_diameter(peg_diameter_mm, radial_clearance_mm)
-    socket_diameter_m = mm_to_blender(socket_diameter_mm)
+    socket_diameter_m = mm_to_blender(socket_diameter_mm, scale_length)
     socket_radius_m = socket_diameter_m / 2.0
-    socket_depth_m = mm_to_blender(socket_depth_mm)
+    socket_depth_m = mm_to_blender(socket_depth_mm, scale_length)
 
     collection = (
         context.collection

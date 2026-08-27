@@ -6,7 +6,7 @@ import bpy
 import bmesh
 
 from ..core.build_info import VERSION
-from ..core.units import mm_to_blender
+from ..core.units import mm_to_blender, get_scene_scale_length
 from ..core.validation import validate_ball_joint_parameters, validate_peg_parameters
 from ..core.naming import get_next_object_name, format_temp_name, is_temp_object
 from ..core.errors import KineFigError, KineFigGeometryError
@@ -83,12 +83,13 @@ def create_ball_joint_geometry(
         rings=rings,
     )
 
-    # 2. Convert millimeters to Blender standard units (1 BU = 1 meter)
-    ball_diameter_m = mm_to_blender(ball_diameter_mm)
+    # 2. Convert millimeters to Blender internal units (BU) respecting scene scale_length
+    scale_length = get_scene_scale_length(context)
+    ball_diameter_m = mm_to_blender(ball_diameter_mm, scale_length)
     ball_radius_m = ball_diameter_m / 2.0
-    stem_diameter_m = mm_to_blender(stem_diameter_mm)
+    stem_diameter_m = mm_to_blender(stem_diameter_mm, scale_length)
     stem_radius_m = stem_diameter_m / 2.0
-    stem_length_m = mm_to_blender(stem_length_mm)
+    stem_length_m = mm_to_blender(stem_length_mm, scale_length)
 
     collection = (
         context.collection
@@ -310,8 +311,9 @@ def create_peg_geometry(
     if context is None:
         raise KineFigGeometryError("Blender context is required to create peg geometry")
 
-    r_base_m = mm_to_blender(peg_diameter_mm / 2.0)
-    length_m = mm_to_blender(peg_length_mm)
+    scale_length = get_scene_scale_length(context)
+    r_base_m = mm_to_blender(peg_diameter_mm / 2.0, scale_length)
+    length_m = mm_to_blender(peg_length_mm, scale_length)
     taper_rad = math.radians(float(taper_angle_deg))
     r_tip_m = r_base_m - length_m * math.tan(taper_rad)
 
