@@ -674,16 +674,20 @@ def run_tests():
                 peg_length_mm=20.0,
             )
             assert res_scale_peg == {"FINISHED"}
-            scale_peg_obj = bpy.data.objects.get("KF_Joint_Peg_003")
+            scale_peg_obj = bpy.context.view_layer.objects.active
             assert scale_peg_obj is not None
-            # When scale_length is 0.001, a 10mm / 20mm peg has 10.0 BU / 20.0 BU geometry.
-            # In Blender world dimensions (BU * scale_length): dimensions are 0.010m (10mm) and 0.020m (20mm).
-            assert math.isclose(scale_peg_obj.dimensions.x, 0.010, abs_tol=1e-4), (
-                f"Expected 0.010m (10mm) in dimensions.x, got {scale_peg_obj.dimensions.x}"
+            # Raw BU dimension when scale_length is 0.001: 10.0 BU for 10.0mm diameter, 20.0 BU for 20.0mm length
+            assert math.isclose(scale_peg_obj.dimensions.x, 10.0, abs_tol=1e-3), (
+                f"Expected 10.0 BU in dimensions.x, got {scale_peg_obj.dimensions.x}"
             )
-            assert math.isclose(scale_peg_obj.dimensions.z, 0.020, abs_tol=1e-4), (
-                f"Expected 0.020m (20mm) in dimensions.z, got {scale_peg_obj.dimensions.z}"
+            assert math.isclose(scale_peg_obj.dimensions.z, 20.0, abs_tol=1e-3), (
+                f"Expected 20.0 BU in dimensions.z, got {scale_peg_obj.dimensions.z}"
             )
+            # World metric length (BU * scale_length): 0.010m (10.0mm) and 0.020m (20.0mm)
+            world_x_m = scale_peg_obj.dimensions.x * bpy.context.scene.unit_settings.scale_length
+            world_z_m = scale_peg_obj.dimensions.z * bpy.context.scene.unit_settings.scale_length
+            assert math.isclose(world_x_m, 0.010, abs_tol=1e-4)
+            assert math.isclose(world_z_m, 0.020, abs_tol=1e-4)
             print("  -> PASSED: Successfully adapted to scene scale_length=0.001; 10mm peg measures 10.0mm in world space")
         finally:
             bpy.context.scene.unit_settings.scale_length = orig_scale_length
@@ -698,6 +702,7 @@ def run_tests():
             "KF_Joint_Peg_001",
             "KF_Joint_Peg_002",
             "KF_Joint_Peg_003",
+            "KF_Joint_Peg_004",
             "KF_Socket_Peg_001",
             "User_Target_Mesh",
         ):
