@@ -116,6 +116,54 @@ Every generated joint carries only factual properties validated and computed at 
 - Uncomputed keys are strictly omitted.
 
 
+## Double Ball / Dumbbell Joint Geometry Policy (PR-004)
+
+### Joint Model & Semantics
+- A Double Ball Joint consists of **Ball A + central stem + Ball B** merged into a single coherent KineFig-owned solid.
+- It is not a collection of separate objects or decorative group. The final geometry is a watertight, closed 2-manifold printable solid with exactly **1 connected surface component**.
+- **Center Distance Semantics (`center_distance_mm`)**: Defined strictly as the distance between the center of Ball A and the center of Ball B along the joint's canonical axis (`+Z`).
+  - Ball A center is at local origin: `(0.0, 0.0, 0.0)`.
+  - Ball B center is at: `(0.0, 0.0, center_distance_mm)`.
+  - Center distance does NOT mean total joint height or exposed stem length.
+  - Total joint height along Z is: `center_distance_mm + (ball_a_diameter_mm + ball_b_diameter_mm) / 2.0`.
+  - Bounding box Z extents: `z_min = -ball_a_diameter_mm / 2.0`, `z_max = center_distance_mm + ball_b_diameter_mm / 2.0`.
+- **Center Distance Non-Overlap Policy**:
+  - Double Ball must preserve two mechanically distinct ball lobes for articulation.
+  - To prevent direct sphere-on-sphere overlap, KineFig enforces:
+    `center_distance_mm >= (ball_a_diameter_mm + ball_b_diameter_mm) / 2.0` (sum of sphere radii).
+  - At the boundary `center_distance == (d_a + d_b)/2`, the two spheres are tangentially touching at a single contact point.
+  - Values below the minimum are rejected with an explicit `KineFigValidationError` without clamping user inputs.
+
+### Construction & Multi-Stage Boolean Union
+- To guarantee manifoldness and eliminate internal intersecting faces for slicing and printing, the solid is assembled via a staged `EXACT` Boolean union:
+  1. Create Sphere A at `(0, 0, 0)` and Cylinder stem from `z = 0` to `z = center_distance_m`.
+  2. Stage 1 Union: Union Sphere A with Stem cylinder -> evaluate depsgraph and extract intermediate mesh.
+  3. Create Sphere B at `(0, 0, center_distance_m)`.
+  4. Stage 2 Union: Union intermediate mesh with Sphere B -> evaluate depsgraph and extract final clean mesh.
+  5. All intermediate modifiers and temporary cutter objects are cleaned immediately after each stage.
+
+### Multi-Stage Transactional Rollback & Evaluated Mesh Lifecycle
+- Multi-stage creation requires robust intermediate failure rollback covering all execution windows:
+  - Any evaluated meshes produced during Boolean evaluation (`eval_mesh_1`, `eval_mesh_2`) are immediately registered in `created_meshes` transactional tracking upon creation.
+  - Evaluated mesh commit is encapsulated in private helper `_commit_evaluated_mesh`, providing a clean monkeypatch test seam without public flags.
+  - If Stage 1 union or post-evaluation commit fails: `eval_mesh_1`, temporary stem objects/meshes, and the target object are cleanly purged.
+  - If Stage 2 union or post-evaluation commit fails: `eval_mesh_2`, intermediate `Stage1` mesh, temporary Ball B object/mesh, and target object are cleanly purged.
+  - Zero orphan objects (`_KF_TMP_`) or unlinked mesh datablocks remain in `bpy.data`.
+
+### Parametric Metadata Schema
+- `kf_type`: `"joint"`
+- `kf_joint_type`: `"double_ball"`
+- `kf_version`: KineFig version string
+- `kf_ball_a_diameter_mm`: Ball A diameter in mm (float)
+- `kf_ball_b_diameter_mm`: Ball B diameter in mm (float)
+- `kf_stem_diameter_mm`: Connecting stem diameter in mm (float)
+- `kf_center_distance_mm`: Distance between sphere centers in mm (float)
+- `kf_axis`: Joint longitudinal axis `(0.0, 0.0, 1.0)`
+- `kf_ball_a_center_mm`: Local coordinates of Ball A center `(0.0, 0.0, 0.0)`
+- `kf_ball_b_center_mm`: Local coordinates of Ball B center `(0.0, 0.0, center_distance_mm)`
+- Uncomputed keys are strictly omitted.
+
+
 ## Diagnostic & Bug Reporting Architecture
 
 

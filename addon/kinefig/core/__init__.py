@@ -14,6 +14,7 @@ from .validation import (
     require_integer_in_range,
     validate_ball_joint_parameters,
     validate_ball_socket_parameters,
+    validate_double_ball_parameters,
 )
 from .naming import (
     PREFIX_KINEFIG,
@@ -66,6 +67,7 @@ __all__ = [
     "require_integer_in_range",
     "validate_ball_joint_parameters",
     "validate_ball_socket_parameters",
+    "validate_double_ball_parameters",
     "PREFIX_KINEFIG",
     "PREFIX_TEMP",
     "format_object_name",

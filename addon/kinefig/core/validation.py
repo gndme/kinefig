@@ -144,3 +144,48 @@ def validate_ball_socket_parameters(
     require_integer_in_range(segments, 3, 256, "segments")
     require_integer_in_range(rings, 3, 256, "rings")
 
+
+def validate_double_ball_parameters(
+    ball_a_diameter_mm: Numeric,
+    ball_b_diameter_mm: Numeric,
+    stem_diameter_mm: Numeric,
+    center_distance_mm: Numeric,
+    segments: int = 32,
+    rings: int = 16,
+) -> None:
+    """Validate parametric inputs for a Double Ball / Dumbbell Joint.
+
+    Enforces:
+    - ball_a_diameter_mm > 0 and finite
+    - ball_b_diameter_mm > 0 and finite
+    - stem_diameter_mm > 0 and finite
+    - center_distance_mm > 0 and finite (distance between Ball A and Ball B centers along +Z)
+    - center_distance_mm >= (ball_a_diameter_mm + ball_b_diameter_mm) / 2.0 (preserves two distinct ball lobes without direct sphere overlap)
+    - stem_diameter_mm < min(ball_a_diameter_mm, ball_b_diameter_mm)
+    - segments and rings strictly in valid integer bounds [3, 256]
+    """
+    ball_a_d = require_positive(ball_a_diameter_mm, "ball_a_diameter_mm")
+    ball_b_d = require_positive(ball_b_diameter_mm, "ball_b_diameter_mm")
+    stem_d = require_positive(stem_diameter_mm, "stem_diameter_mm")
+    center_dist = require_positive(center_distance_mm, "center_distance_mm")
+
+    min_ball_d = min(ball_a_d, ball_b_d)
+    if stem_d >= min_ball_d:
+        raise KineFigValidationError(
+            f"Stem diameter ({stem_d:.2f} mm) must be less than both Ball A ({ball_a_d:.2f} mm) "
+            f"and Ball B ({ball_b_d:.2f} mm) diameters (minimum ball diameter: {min_ball_d:.2f} mm)"
+        )
+
+    min_center_dist = (ball_a_d + ball_b_d) / 2.0
+    if center_dist < min_center_dist and not math.isclose(center_dist, min_center_dist, abs_tol=1e-7):
+        raise KineFigValidationError(
+            f"Center distance ({center_dist:.2f} mm) must be at least the sum of ball radii "
+            f"({min_center_dist:.2f} mm) to preserve two distinct ball lobes without direct sphere overlap "
+            f"(Ball A radius: {ball_a_d / 2.0:.2f} mm, Ball B radius: {ball_b_d / 2.0:.2f} mm)."
+        )
+
+    require_integer_in_range(segments, 3, 256, "segments")
+    require_integer_in_range(rings, 3, 256, "rings")
+
+
+

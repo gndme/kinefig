@@ -96,10 +96,57 @@ class KINEFIG_PT_main(bpy.types.Panel):
             sop.socket_depth_mm = sprops.socket_depth_mm
             sop.segments = sprops.segments
             sop.rings = sprops.rings
-        else:
             socket_box.operator(
                 "kinefig.create_ball_socket",
                 text="Create Ball Socket",
+                icon="ADD",
+            )
+
+        # 2C. Double Ball / Dumbbell Joint (PR-004)
+        db_box = layout.box()
+        db_box.label(text="JOINT: Double Ball / Dumbbell", icon="ARROW_LEFTRIGHT")
+
+        if hasattr(scene, "kinefig_double_ball_joint"):
+            db_props = scene.kinefig_double_ball_joint
+            db_col = db_box.column(align=True)
+            db_col.prop(db_props, "ball_a_diameter_mm", text="Ball A Dia")
+            db_col.prop(db_props, "ball_b_diameter_mm", text="Ball B Dia")
+            db_col.prop(db_props, "stem_diameter_mm", text="Stem Dia")
+            db_col.prop(db_props, "center_distance_mm", text="Center Dist")
+
+            # Center distance semantics & overlap policy readout
+            min_dist = (db_props.ball_a_diameter_mm + db_props.ball_b_diameter_mm) / 2.0
+            total_z = db_props.center_distance_mm + min_dist
+
+            db_readout = db_box.row()
+            db_readout.scale_y = 0.8
+            if db_props.center_distance_mm < min_dist:
+                db_readout.alert = True
+                db_readout.label(
+                    text=f"Overlap! Min Dist: {min_dist:.2f} mm",
+                    icon="ERROR",
+                )
+            else:
+                db_readout.label(
+                    text=f"Total Z: {total_z:.2f} mm (min: {min_dist:.2f} mm)",
+                    icon="INFO",
+                )
+
+            db_op = db_box.operator(
+                "kinefig.create_double_ball_joint",
+                text="Create Double Ball",
+                icon="ADD",
+            )
+            db_op.ball_a_diameter_mm = db_props.ball_a_diameter_mm
+            db_op.ball_b_diameter_mm = db_props.ball_b_diameter_mm
+            db_op.stem_diameter_mm = db_props.stem_diameter_mm
+            db_op.center_distance_mm = db_props.center_distance_mm
+            db_op.segments = db_props.segments
+            db_op.rings = db_props.rings
+        else:
+            db_box.operator(
+                "kinefig.create_double_ball_joint",
+                text="Create Double Ball",
                 icon="ADD",
             )
 

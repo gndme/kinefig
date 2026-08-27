@@ -262,6 +262,70 @@ def test_ball_socket_operator_geometry_failure():
         assert "Geometry error" in str(op.report.call_args[0][1])
 
 
+def test_create_double_ball_joint_operator_success():
+    """Verify double ball operator executes successfully and reports info."""
+    from addon.kinefig.operators.joints import KINEFIG_OT_create_double_ball_joint
+
+    op = KINEFIG_OT_create_double_ball_joint()
+    op.report = MagicMock()
+    op.ball_a_diameter_mm = 5.0
+    op.ball_b_diameter_mm = 5.0
+    op.stem_diameter_mm = 3.0
+    op.center_distance_mm = 8.0
+    op.segments = 32
+    op.rings = 16
+
+    context = MagicMock()
+    context.scene.cursor.location = (0.0, 0.0, 0.0)
+    context.collection = MagicMock()
+
+    res = op.execute(context)
+    assert res == {"FINISHED"}
+    assert op.report.called
+    created_names = [o.name for o in bpy.data.objects]
+    assert "KF_Joint_DoubleBall_001" in created_names
+
+
+def test_create_double_ball_joint_operator_validation_error():
+    """Verify double ball operator returns CANCELLED on validation failure."""
+    from unittest.mock import patch
+    from addon.kinefig.operators.joints import KINEFIG_OT_create_double_ball_joint
+    from addon.kinefig.core.errors import KineFigValidationError
+
+    op = KINEFIG_OT_create_double_ball_joint()
+    op.report = MagicMock()
+    context = MagicMock()
+
+    with patch(
+        "addon.kinefig.operators.joints.create_double_ball_geometry",
+        side_effect=KineFigValidationError("Stem diameter must be less than ball diameter"),
+    ):
+        res = op.execute(context)
+        assert res == {"CANCELLED"}
+        op.report.assert_called_once()
+        assert "ERROR" in op.report.call_args[0][0]
+
+
+def test_create_double_ball_joint_operator_geometry_error():
+    """Verify double ball operator returns CANCELLED on geometry failure."""
+    from unittest.mock import patch
+    from addon.kinefig.operators.joints import KINEFIG_OT_create_double_ball_joint
+    from addon.kinefig.core.errors import KineFigGeometryError
+
+    op = KINEFIG_OT_create_double_ball_joint()
+    op.report = MagicMock()
+    context = MagicMock()
+
+    with patch(
+        "addon.kinefig.operators.joints.create_double_ball_geometry",
+        side_effect=KineFigGeometryError("Boolean union failed"),
+    ):
+        res = op.execute(context)
+        assert res == {"CANCELLED"}
+        op.report.assert_called_once()
+        assert "ERROR" in op.report.call_args[0][0]
+
+
 def test_use_selected_ball_operator():
     """Verify use_selected_ball copies ball diameter from active ball joint."""
     from addon.kinefig.operators.sockets import KINEFIG_OT_use_selected_ball
