@@ -1,6 +1,20 @@
 # Changelog
 
-## Unreleased (PR-004 Parametric Double Ball / Dumbbell Joint Core)
+## Unreleased (PR-005 Parametric Peg + Socket Core)
+- Parametric male cylindrical Peg generator (`geometry/joints.py`): creates watertight 2-manifold closed cylinder or conical frustum (with optional draft/taper angle) with mm precision.
+- Parametric female Peg Socket receiver cavity generator (`geometry/sockets.py`): creates closed watertight 2-manifold cylinder cutter volume with explicit uniform radial clearance.
+- Direct BMesh primitive construction (`bmesh.ops.create_cone` with `cap_ends=True`): 100% analytical watertight 2-manifold solids without Booleans, avoiding boolean solver failures or non-manifold artifacts.
+- Explicit radial clearance contract (`compute_socket_diameter`): `socket_diameter = peg_diameter + 2 * radial_clearance`.
+- Parameter validation (`validate_peg_parameters`, `validate_peg_socket_parameters`): enforces positive finite dimensions, draft angle limits (`0 <= taper < collapse angle`), and strict integer tessellation in [3, 256].
+- Scene unit scale-length awareness (`core/units.py`): added `get_scene_scale_length()` and updated `mm_to_blender` to dynamically adapt to custom scene `Unit Scale` settings (e.g. `0.001` or `1.0`), ensuring millimeter dimensions are 100% accurate in any scene.
+- Operators `kinefig.create_peg_joint`, `kinefig.create_peg_socket`, and contextual `kinefig.use_selected_peg` (reads peg diameter from active peg joint into socket settings).
+- Sidebar N-panel UI: dedicated Male Peg Joint and Peg Socket Receiver cards with diameter, length, taper, radial clearance, and live cavity diameter readout.
+- Hardened Panel.draw against malformed custom metadata: extracted safe helpers `_get_valid_selected_peg_diameter` and `_get_valid_selected_ball_diameter` to prevent draw exceptions on string, None, NaN, inf, or negative values without mutating scene settings.
+- Cleaned redundant exception clauses in `KINEFIG_OT_use_selected_peg` and `KINEFIG_OT_use_selected_ball` (`except Exception as exc:`).
+- Transactional rollback on failure: cleans all created objects and meshes on any failure, preserving scene safety.
+- Complete unit tests (`tests/test_peg.py`, `tests/test_validation.py`, `tests/test_units.py`) and real Blender 4.2 packaged zip runtime integration tests (`tests/test_blender_runtime.py`).
+
+## 0.0.4 (PR-004 Parametric Double Ball / Dumbbell Joint Core)
 - Parametric Double Ball / Dumbbell Joint generator (`geometry/joints.py`): creates a single coherent, watertight 2-manifold printable solid combining Ball A at local origin, connecting stem along +Z, and Ball B at center distance along +Z.
 - Multi-stage Exact Boolean union eliminating internal overlapping geometry between spheres and stem.
 - Reusable Boolean evaluation helper (`geometry/boolean.py`): centralized depsgraph evaluation and mesh extraction with strict `KineFigGeometryError` diagnostics.

@@ -10,6 +10,8 @@ from addon.kinefig.core.validation import (
     validate_ball_joint_parameters,
     validate_ball_socket_parameters,
     validate_double_ball_parameters,
+    validate_peg_parameters,
+    validate_peg_socket_parameters,
 )
 from addon.kinefig.core.errors import KineFigValidationError
 
@@ -280,6 +282,111 @@ def test_validate_ball_socket_parameters_invalid_tessellation(bad_seg, bad_ring)
     """Verify validate_ball_socket_parameters rejects out-of-range, non-int segments/rings."""
     with pytest.raises(KineFigValidationError):
         validate_ball_socket_parameters(5.0, 0.15, 3.5, segments=bad_seg, rings=bad_ring)
+
+
+# ==============================================================================
+# Peg Parameter Validation Tests
+# ==============================================================================
+
+from addon.kinefig.core.validation import validate_peg_parameters, validate_peg_socket_parameters
+
+
+def test_validate_peg_parameters_valid():
+    """Verify validate_peg_parameters accepts valid default and custom parameters."""
+    validate_peg_parameters(3.0, 5.0)
+    validate_peg_parameters(4.0, 7.0, taper_angle_deg=5.0, segments=64)
+    validate_peg_parameters(1.0, 2.0, taper_angle_deg=0.0, segments=3)
+
+
+@pytest.mark.parametrize(
+    "bad_diam, bad_len, bad_taper",
+    [
+        (0.0, 5.0, 0.0),
+        (-3.0, 5.0, 0.0),
+        (3.0, 0.0, 0.0),
+        (3.0, -5.0, 0.0),
+        (3.0, 5.0, -1.0),
+        (float("nan"), 5.0, 0.0),
+        (3.0, float("nan"), 0.0),
+        (3.0, 5.0, float("nan")),
+        (float("inf"), 5.0, 0.0),
+        (3.0, float("inf"), 0.0),
+        (3.0, 5.0, float("inf")),
+    ],
+)
+def test_validate_peg_parameters_non_positive_or_non_finite(bad_diam, bad_len, bad_taper):
+    """Verify validate_peg_parameters rejects non-positive or non-finite inputs."""
+    with pytest.raises(KineFigValidationError):
+        validate_peg_parameters(bad_diam, bad_len, taper_angle_deg=bad_taper)
+
+
+def test_validate_peg_parameters_excessive_taper():
+    """Verify validate_peg_parameters rejects taper angle causing tip radius <= 0 or angle >= 90 deg."""
+    # Diameter = 3.0 (radius = 1.5), Length = 5.0. Max valid angle: atan(1.5 / 5.0) = ~16.699 deg
+    # 17 degrees should exceed tip radius
+    with pytest.raises(KineFigValidationError, match="causes peg tip to invert or collapse"):
+        validate_peg_parameters(3.0, 5.0, taper_angle_deg=17.0)
+
+    # 90 degrees or higher
+    with pytest.raises(KineFigValidationError, match="must be less than 90"):
+        validate_peg_parameters(3.0, 5.0, taper_angle_deg=90.0)
+
+
+@pytest.mark.parametrize(
+    "bad_seg",
+    [2, 0, -1, 500, 31.7, 32.0, True, "32"],
+)
+def test_validate_peg_parameters_invalid_tessellation(bad_seg):
+    """Verify validate_peg_parameters rejects invalid segment counts."""
+    with pytest.raises(KineFigValidationError):
+        validate_peg_parameters(3.0, 5.0, segments=bad_seg)
+
+
+def test_validate_peg_socket_parameters_valid():
+    """Verify validate_peg_socket_parameters accepts valid default and custom parameters."""
+    validate_peg_socket_parameters(3.0, 0.15, 5.0)
+    validate_peg_socket_parameters(4.0, 0.20, 10.0, segments=64)
+    validate_peg_socket_parameters(3.0, 0.0, 5.0)  # Zero clearance is valid nominal fit
+
+
+@pytest.mark.parametrize(
+    "bad_peg, bad_clr, bad_depth",
+    [
+        (0.0, 0.15, 5.0),
+        (-3.0, 0.15, 5.0),
+        (3.0, -0.01, 5.0),
+        (3.0, -1.0, 5.0),
+        (3.0, 0.15, 0.0),
+        (3.0, 0.15, -5.0),
+        (float("nan"), 0.15, 5.0),
+        (3.0, float("nan"), 5.0),
+        (3.0, 0.15, float("nan")),
+        (float("inf"), 0.15, 5.0),
+        (3.0, float("inf"), 5.0),
+        (3.0, 0.15, float("inf")),
+    ],
+)
+def test_validate_peg_socket_parameters_non_positive_or_non_finite(bad_peg, bad_clr, bad_depth):
+    """Verify validate_peg_socket_parameters rejects invalid dimensions or negative clearance."""
+    with pytest.raises(KineFigValidationError):
+        validate_peg_socket_parameters(bad_peg, bad_clr, bad_depth)
+
+
+@pytest.mark.parametrize(
+    "bad_seg",
+    [2, 0, -1, 500, 31.7, 32.0, True, "32"],
+)
+def test_validate_peg_socket_parameters_invalid_tessellation(bad_seg):
+    """Verify validate_peg_socket_parameters rejects invalid segment counts."""
+    with pytest.raises(KineFigValidationError):
+        validate_peg_socket_parameters(3.0, 0.15, 5.0, segments=bad_seg)
+
+
+# ==============================================================================
+# Double Ball Parameter Validation Tests
+# ==============================================================================
+
+from addon.kinefig.core.validation import validate_double_ball_parameters
 
 
 def test_validate_double_ball_parameters_valid():

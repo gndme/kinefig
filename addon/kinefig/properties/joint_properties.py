@@ -105,3 +105,42 @@ class KineFigDoubleBallJointProperties(bpy.types.PropertyGroup):
         max=256,
     )  # type: ignore
 
+
+class KineFigPegJointProperties(bpy.types.PropertyGroup):
+    """Scene properties for creating parametric male peg connectors."""
+
+    peg_diameter_mm: bpy.props.FloatProperty(
+        name="Peg Diameter (mm)",
+        description="Diameter of the cylindrical peg in millimeters",
+        default=3.0,
+        min=0.1,
+        max=100.0,
+        precision=2,
+    )  # type: ignore
+
+    peg_length_mm: bpy.props.FloatProperty(
+        name="Peg Length (mm)",
+        description="Length of the cylindrical peg in millimeters",
+        default=5.0,
+        min=0.1,
+        max=200.0,
+        precision=2,
+    )  # type: ignore
+
+    taper_angle_deg: bpy.props.FloatProperty(
+        name="Taper Angle (°)",
+        description="Draft/taper angle in degrees narrowing towards insertion tip (0 = straight cylinder)",
+        default=0.0,
+        min=0.0,
+        max=89.0,
+        precision=2,
+    )  # type: ignore
+
+    segments: bpy.props.IntProperty(
+        name="Segments",
+        description="Radial resolution of peg cylinder",
+        default=32,
+        min=3,
+        max=256,
+    )  # type: ignore
+

@@ -1,15 +1,17 @@
 """Parametric joint geometry generators for KineFig."""
 
+import math
 from typing import Optional, Tuple, Any
 import bpy
 import bmesh
 from mathutils import Matrix, Vector
 
 from ..core.build_info import VERSION
-from ..core.units import mm_to_blender
+from ..core.units import mm_to_blender, get_scene_scale_length
 from ..core.validation import (
     validate_ball_joint_parameters,
     validate_double_ball_parameters,
+    validate_peg_parameters,
 )
 from ..core.naming import get_next_object_name, format_temp_name, is_temp_object
 from ..core.errors import KineFigError, KineFigGeometryError
@@ -108,12 +110,13 @@ def create_ball_joint_geometry(
         rings=rings,
     )
 
-    # 2. Convert millimeters to Blender standard units (1 BU = 1 meter)
-    ball_diameter_m = mm_to_blender(ball_diameter_mm)
+    # 2. Convert millimeters to Blender internal units (BU) respecting scene scale_length
+    scale_length = get_scene_scale_length(context)
+    ball_diameter_m = mm_to_blender(ball_diameter_mm, scale_length)
     ball_radius_m = ball_diameter_m / 2.0
-    stem_diameter_m = mm_to_blender(stem_diameter_mm)
+    stem_diameter_m = mm_to_blender(stem_diameter_mm, scale_length)
     stem_radius_m = stem_diameter_m / 2.0
-    stem_length_m = mm_to_blender(stem_length_mm)
+    stem_length_m = mm_to_blender(stem_length_mm, scale_length)
 
     collection = (
         context.collection
@@ -296,6 +299,146 @@ def create_ball_joint_geometry(
         raise KineFigGeometryError(f"Failed to create ball joint geometry: {exc}") from exc
 
 
+def create_peg_geometry(
+    context: Any,
+    peg_diameter_mm: float = 3.0,
+    peg_length_mm: float = 5.0,
+    taper_angle_deg: float = 0.0,
+    segments: int = 32,
+    location: Optional[Tuple[float, float, float]] = None,
+) -> bpy.types.Object:
+    """Create a parametric male cylindrical peg connector as a single manifold mesh.
+
+    Geometry Policy:
+    Produces a single coherent, watertight 2-manifold solid cylinder (or conical frustum
+    if tapered) aligned along canonical local +Z. The peg base is at local z = 0 and
+    extends along +Z to z = +peg_length_mm.
+
+    Orientation & Origin:
+    - Default location: 3D Cursor position (or specified location).
+    - Local origin: (0, 0, 0) at the center of the peg base plane.
+    - Local joint axis (kf_axis): (0.0, 0.0, 1.0) pointing from base towards insertion tip.
+    - Base plane: z = 0 (exact nominal diameter = peg_diameter_mm).
+    - Insertion tip: z = +peg_length_mm.
+
+    Transactional Safety:
+    On ANY failure after scene mutation begins, all allocated resources are
+    deterministically cleaned up before raising KineFigGeometryError.
+
+    Returns:
+        The created KineFig joint object (e.g. KF_Joint_Peg_001).
+    """
+    validate_peg_parameters(
+        peg_diameter_mm=peg_diameter_mm,
+        peg_length_mm=peg_length_mm,
+        taper_angle_deg=taper_angle_deg,
+        segments=segments,
+    )
+
+    if context is None:
+        raise KineFigGeometryError("Blender context is required to create peg geometry")
+
+    scale_length = get_scene_scale_length(context)
+    r_base_m = mm_to_blender(peg_diameter_mm / 2.0, scale_length)
+    length_m = mm_to_blender(peg_length_mm, scale_length)
+    taper_rad = math.radians(float(taper_angle_deg))
+    r_tip_m = r_base_m - length_m * math.tan(taper_rad)
+
+    collection = (
+        context.collection
+        if hasattr(context, "collection") and context.collection
+        else (context.scene.collection if hasattr(context, "scene") else None)
+    )
+
+    existing_names = [o.name for o in bpy.data.objects] if hasattr(bpy.data, "objects") else []
+    object_name = get_next_object_name("Joint", detail="Peg", existing_names=existing_names)
+    mesh_name = f"{object_name}_Mesh"
+
+    created_objects = []
+    created_meshes = []
+
+    try:
+        peg_mesh = bpy.data.meshes.new(mesh_name)
+        created_meshes.append(peg_mesh)
+
+        bm = bmesh.new()
+        try:
+            bmesh.ops.create_cone(
+                bm,
+                cap_ends=True,
+                segments=int(segments),
+                radius1=r_base_m,
+                radius2=r_tip_m,
+                depth=length_m,
+            )
+            bmesh.ops.translate(
+                bm,
+                vec=(0.0, 0.0, length_m / 2.0),
+                verts=bm.verts,
+            )
+            bm.to_mesh(peg_mesh)
+        finally:
+            bm.free()
+
+        peg_obj = bpy.data.objects.new(object_name, peg_mesh)
+        created_objects.append(peg_obj)
+
+        if collection and hasattr(collection, "objects"):
+            collection.objects.link(peg_obj)
+
+        # Set location
+        if location is not None:
+            peg_obj.location = location
+        elif hasattr(context, "scene") and hasattr(context.scene, "cursor"):
+            peg_obj.location = context.scene.cursor.location
+
+        # Set factual KineFig metadata only
+        peg_obj["kf_type"] = "joint"
+        peg_obj["kf_joint_type"] = "peg"
+        peg_obj["kf_version"] = VERSION
+        peg_obj["kf_peg_diameter_mm"] = round(float(peg_diameter_mm), 4)
+        peg_obj["kf_peg_length_mm"] = round(float(peg_length_mm), 4)
+        peg_obj["kf_taper_angle_deg"] = round(float(taper_angle_deg), 4)
+        peg_obj["kf_axis"] = (0.0, 0.0, 1.0)
+
+        log_info(
+            f"Created Peg joint: {peg_obj.name}",
+            name=peg_obj.name,
+            peg_diameter_mm=peg_diameter_mm,
+            peg_length_mm=peg_length_mm,
+            taper_angle_deg=taper_angle_deg,
+        )
+
+        return peg_obj
+
+    except Exception as exc:
+        if collection and hasattr(collection, "objects"):
+            for obj in list(created_objects):
+                if obj.name in collection.objects:
+                    try:
+                        collection.objects.unlink(obj)
+                    except Exception:
+                        pass
+
+        for obj in list(created_objects):
+            if hasattr(bpy.data, "objects") and obj.name in bpy.data.objects:
+                try:
+                    bpy.data.objects.remove(obj, do_unlink=True)
+                except Exception:
+                    pass
+
+        for mesh in list(created_meshes):
+            if hasattr(bpy.data, "meshes") and mesh.name in bpy.data.meshes:
+                try:
+                    bpy.data.meshes.remove(mesh, do_unlink=True)
+                except Exception:
+                    pass
+
+        log_error(f"create_peg_geometry failed and rolled back cleanly: {exc}")
+
+        if isinstance(exc, KineFigError):
+            raise
+        raise KineFigGeometryError(f"Failed to create peg joint geometry: {exc}") from exc
 def create_double_ball_geometry(
     context: Any,
     ball_a_diameter_mm: float = 5.0,
@@ -339,10 +482,11 @@ def create_double_ball_geometry(
     if context is None:
         raise KineFigGeometryError("Blender context is required to create joint geometry")
 
-    r_a_m = mm_to_blender(ball_a_diameter_mm / 2.0)
-    r_b_m = mm_to_blender(ball_b_diameter_mm / 2.0)
-    r_stem_m = mm_to_blender(stem_diameter_mm / 2.0)
-    dist_m = mm_to_blender(center_distance_mm)
+    scale_length = get_scene_scale_length(context)
+    r_a_m = mm_to_blender(ball_a_diameter_mm / 2.0, scale_length)
+    r_b_m = mm_to_blender(ball_b_diameter_mm / 2.0, scale_length)
+    r_stem_m = mm_to_blender(stem_diameter_mm / 2.0, scale_length)
+    dist_m = mm_to_blender(center_distance_mm, scale_length)
 
     existing_names = [o.name for o in bpy.data.objects] if hasattr(bpy.data, "objects") else []
     joint_obj_name = get_next_object_name("Joint", detail="DoubleBall", existing_names=existing_names)
@@ -588,4 +732,5 @@ def create_double_ball_geometry(
         if isinstance(exc, KineFigError):
             raise
         raise KineFigGeometryError(f"Failed to create double ball joint geometry: {exc}") from exc
+
 

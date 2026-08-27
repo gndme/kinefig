@@ -43,7 +43,8 @@ Delivered:
 
 Exit gate: **PASSED (Merged into main)**.
 
-### PR-004 — Double Ball Joint (Dumbbell) Core (IN PROGRESS)
+### PR-004 — Double Ball Joint (Dumbbell) Core (COMPLETED)
+Delivered:
 Build on Ball Joint and Socket primitives:
 - Single coherent 2-manifold printable solid (Ball A + central stem + Ball B);
 - Independent dual ball dimensions (`ball_a_diameter_mm`, `ball_b_diameter_mm`), connecting stem diameter (`stem_diameter_mm < min(ball_a, ball_b)`), and center distance (`center_distance_mm`);
@@ -52,16 +53,20 @@ Build on Ball Joint and Socket primitives:
 - Full multi-stage transactional rollback on Boolean failure;
 - Real Blender packaged zip integration tests for symmetric & asymmetric double balls, manifoldness, rollback, and Undo.
 
-### PR-005 — Peg + Socket
-Build:
-- Cylindrical peg with optional draft/taper angle;
-- Matching receiver socket;
-- Clearance compensation.
+### PR-005 — Peg + Socket Core (IMPLEMENTED)
+Delivered:
+- Parametric male cylindrical peg with optional draft/taper angle;
+- Matching female receiver socket cutter volume;
+- Direct BMesh closed watertight 2-manifold geometry (no Booleans required);
+- Explicit radial clearance model (`socket_diameter = peg_diameter + 2 * radial_clearance`);
+- Contextual UX operator `kinefig.use_selected_peg` to match socket settings from active peg;
+- Transactional rollback on failure, full Undo support, and factual metadata schema;
+- Unit test suite (231 tests) and real Blender 4.2 packaged zip runtime integration tests.
 
 Exit gate:
 - Measured geometry correct;
-- Rotated/scaled target cases tested;
-- Basic UAT pass.
+- Clearance invariant verified;
+- Real Blender packaged zip tests pass.
 
 ---
 

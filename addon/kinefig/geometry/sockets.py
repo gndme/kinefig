@@ -5,9 +5,9 @@ import bpy
 import bmesh
 
 from ..core.build_info import VERSION
-from ..core.units import mm_to_blender
+from ..core.units import mm_to_blender, get_scene_scale_length
 from ..core.clearance import compute_socket_diameter
-from ..core.validation import validate_ball_socket_parameters
+from ..core.validation import validate_ball_socket_parameters, validate_peg_socket_parameters
 from ..core.naming import get_next_object_name, format_temp_name, is_temp_object
 from ..core.errors import KineFigError, KineFigGeometryError
 from ..core.logging import log_info, log_error
@@ -90,11 +90,12 @@ def create_ball_socket_geometry(
         rings=rings,
     )
 
-    # 2. Convert millimeters to Blender standard units (1 BU = 1 meter)
+    # 2. Convert millimeters to Blender internal units (BU) respecting scene scale_length
+    scale_length = get_scene_scale_length(context)
     socket_diameter_mm = compute_socket_diameter(ball_diameter_mm, clearance_mm)
-    socket_diameter_m = mm_to_blender(socket_diameter_mm)
+    socket_diameter_m = mm_to_blender(socket_diameter_mm, scale_length)
     socket_radius_m = socket_diameter_m / 2.0
-    socket_depth_m = mm_to_blender(socket_depth_mm)
+    socket_depth_m = mm_to_blender(socket_depth_mm, scale_length)
 
     # Center of sphere along Z such that highest point is at socket_depth_m
     z_center_m = socket_depth_m - socket_radius_m
@@ -289,3 +290,157 @@ def create_ball_socket_geometry(
         if isinstance(exc, KineFigError):
             raise
         raise KineFigGeometryError(f"Failed to create ball socket geometry: {exc}") from exc
+
+
+def create_peg_socket_geometry(
+    context: Any,
+    peg_diameter_mm: float = 3.0,
+    radial_clearance_mm: float = 0.15,
+    socket_depth_mm: float = 5.0,
+    segments: int = 32,
+    location: Optional[Tuple[float, float, float]] = None,
+) -> bpy.types.Object:
+    """Create a parametric female peg receiver socket cavity tool as a closed manifold mesh.
+
+    Geometry Policy:
+    Generates a closed, watertight 2-manifold cutter volume representing the negative
+    receiver cavity for a cylindrical peg connector. The cavity extends along local +Z
+    from the opening plane at z = 0 to the flat closed bottom at z = +socket_depth_mm.
+    The opening plane at z = 0 is sealed with a planar circular cap to ensure the cutter
+    is a closed 2-manifold solid.
+
+    Clearance Contract:
+    Radial clearance is applied uniformly:
+        socket_diameter = peg_diameter + 2 * radial_clearance
+
+    Orientation & Coordinates:
+    - Default location: 3D Cursor position (or specified location).
+    - Local origin: (0, 0, 0) at the center of the planar opening face (z = 0).
+    - Socket cavity axis (kf_axis): (0.0, 0.0, 1.0) pointing along the cavity depth.
+    - Insertion direction (kf_insertion_axis): (0.0, 0.0, 1.0) (male peg travel into cavity).
+    - Opening outward normal (kf_opening_normal): (0.0, 0.0, -1.0) (pointing outward from opening plane).
+    - Cavity depth: extends from z = 0 to z = +socket_depth_mm.
+
+    Transactional Safety:
+    On ANY failure after scene mutation begins, all allocated resources are
+    deterministically cleaned up before raising KineFigGeometryError.
+
+    Returns:
+        The created KineFig socket object (e.g. KF_Socket_Peg_001).
+    """
+    validate_peg_socket_parameters(
+        peg_diameter_mm=peg_diameter_mm,
+        radial_clearance_mm=radial_clearance_mm,
+        socket_depth_mm=socket_depth_mm,
+        segments=segments,
+    )
+
+    if context is None:
+        raise KineFigGeometryError("Blender context is required to create peg socket geometry")
+
+    scale_length = get_scene_scale_length(context)
+    socket_diameter_mm = compute_socket_diameter(peg_diameter_mm, radial_clearance_mm)
+    socket_diameter_m = mm_to_blender(socket_diameter_mm, scale_length)
+    socket_radius_m = socket_diameter_m / 2.0
+    socket_depth_m = mm_to_blender(socket_depth_mm, scale_length)
+
+    collection = (
+        context.collection
+        if hasattr(context, "collection") and context.collection
+        else (context.scene.collection if hasattr(context, "scene") else None)
+    )
+
+    existing_names = [o.name for o in bpy.data.objects] if hasattr(bpy.data, "objects") else []
+    object_name = get_next_object_name("Socket", detail="Peg", existing_names=existing_names)
+    mesh_name = f"{object_name}_Mesh"
+
+    created_objects = []
+    created_meshes = []
+
+    try:
+        socket_mesh = bpy.data.meshes.new(mesh_name)
+        created_meshes.append(socket_mesh)
+
+        bm = bmesh.new()
+        try:
+            bmesh.ops.create_cone(
+                bm,
+                cap_ends=True,
+                segments=int(segments),
+                radius1=socket_radius_m,
+                radius2=socket_radius_m,
+                depth=socket_depth_m,
+            )
+            bmesh.ops.translate(
+                bm,
+                vec=(0.0, 0.0, socket_depth_m / 2.0),
+                verts=bm.verts,
+            )
+            bm.to_mesh(socket_mesh)
+        finally:
+            bm.free()
+
+        socket_obj = bpy.data.objects.new(object_name, socket_mesh)
+        created_objects.append(socket_obj)
+
+        if collection and hasattr(collection, "objects"):
+            collection.objects.link(socket_obj)
+
+        # Set location
+        if location is not None:
+            socket_obj.location = location
+        elif hasattr(context, "scene") and hasattr(context.scene, "cursor"):
+            socket_obj.location = context.scene.cursor.location
+
+        # Set factual KineFig metadata only
+        socket_obj["kf_type"] = "socket"
+        socket_obj["kf_socket_type"] = "peg"
+        socket_obj["kf_version"] = VERSION
+        socket_obj["kf_peg_diameter_mm"] = round(float(peg_diameter_mm), 4)
+        socket_obj["kf_radial_clearance_mm"] = round(float(radial_clearance_mm), 4)
+        socket_obj["kf_socket_diameter_mm"] = round(float(socket_diameter_mm), 4)
+        socket_obj["kf_socket_depth_mm"] = round(float(socket_depth_mm), 4)
+        socket_obj["kf_axis"] = (0.0, 0.0, 1.0)
+        socket_obj["kf_insertion_axis"] = (0.0, 0.0, 1.0)
+        socket_obj["kf_opening_normal"] = (0.0, 0.0, -1.0)
+
+        log_info(
+            f"Created Peg socket: {socket_obj.name}",
+            name=socket_obj.name,
+            peg_diameter_mm=peg_diameter_mm,
+            radial_clearance_mm=radial_clearance_mm,
+            socket_diameter_mm=socket_diameter_mm,
+            socket_depth_mm=socket_depth_mm,
+        )
+
+        return socket_obj
+
+    except Exception as exc:
+        if collection and hasattr(collection, "objects"):
+            for obj in list(created_objects):
+                if obj.name in collection.objects:
+                    try:
+                        collection.objects.unlink(obj)
+                    except Exception:
+                        pass
+
+        for obj in list(created_objects):
+            if hasattr(bpy.data, "objects") and obj.name in bpy.data.objects:
+                try:
+                    bpy.data.objects.remove(obj, do_unlink=True)
+                except Exception:
+                    pass
+
+        for mesh in list(created_meshes):
+            if hasattr(bpy.data, "meshes") and mesh.name in bpy.data.meshes:
+                try:
+                    bpy.data.meshes.remove(mesh, do_unlink=True)
+                except Exception:
+                    pass
+
+        log_error(f"create_peg_socket_geometry failed and rolled back cleanly: {exc}")
+
+        if isinstance(exc, KineFigError):
+            raise
+        raise KineFigGeometryError(f"Failed to create peg socket geometry: {exc}") from exc
+
